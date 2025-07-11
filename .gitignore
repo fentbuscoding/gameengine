@@ -1,0 +1,381 @@
+# .gitignore for Nexus Game Engine
+
+###################
+# Build Directories
+###################
+build/
+Build/
+BUILD/
+out/
+bin/
+Bin/
+BIN/
+lib/
+Lib/
+LIB/
+x64/
+x86/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+###################
+# CMake Generated Files
+###################
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+CTestTestfile.cmake
+_deps/
+cmake-build-*/
+.cmake/
+
+###################
+# Visual Studio / MSBuild
+###################
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+*.vcpkg.json.user
+.vs/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/c_cpp_properties.json
+
+###################
+# Compiled Object Files
+###################
+*.o
+*.obj
+*.elf
+*.ko
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+###################
+# Static Libraries
+###################
+*.a
+*.la
+*.lo
+*.lib
+
+###################
+# Shared Libraries
+###################
+*.so
+*.so.*
+*.dylib
+*.dll
+
+###################
+# Precompiled Headers
+###################
+*.gch
+*.pch
+
+###################
+# Dependency Directories
+###################
+node_modules/
+bower_components/
+vendor/
+thirdparty/downloads/
+thirdparty/temp/
+packages/
+
+###################
+# Python (if using Python scripting)
+###################
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.pyc
+
+###################
+# Log Files
+###################
+*.log
+*.log.*
+logs/
+*.tmp
+*.temp
+
+###################
+# Asset Cache/Generated Files
+###################
+*.cache
+*.meta
+*.asset
+*.unity
+*.unitypackage
+.import/
+.godot/
+Temp/
+Library/
+Assets/StreamingAssets.meta
+
+###################
+# Shader Compiled Files
+###################
+*.cso
+*.fxo
+*.spirv
+
+###################
+# Backup Files
+###################
+*~
+*.swp
+*.swo
+*#
+.#*
+*.bak
+*.backup
+*.orig
+*.tmp
+
+###################
+# OS Generated Files
+###################
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+###################
+# IDE Files
+###################
+# CLion
+.idea/
+cmake-build-*/
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# Dev-C++
+*.dev
+
+# QtCreator
+*.autosave
+*.pro.user
+*.pro.user.*
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+###################
+# Documentation Generated
+###################
+doc/
+docs/generated/
+*.pdf
+Doxyfile.bak
+
+###################
+# Package Files
+###################
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.bz2
+*.xz
+*.tgz
+
+###################
+# Game Engine Specific
+###################
+# Temporary shader files
+shaders/temp/
+shaders/compiled/
+
+# Asset processing temporary files
+assets/temp/
+assets/cache/
+assets/processed/
+
+# Configuration files with sensitive data
+config/private/
+*.private.ini
+*.secret.cfg
+
+# Large asset files (consider using Git LFS)
+*.fbx
+*.obj
+*.3ds
+*.max
+*.blend1
+*.wav
+*.mp3
+*.ogg
+*.mp4
+*.avi
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.tga
+*.dds
+*.exr
+*.hdr
+
+# Generated code files
+generated/
+src/generated/
+
+# Profiling files
+*.prof
+*.perf
+profile_*
+
+# Memory dump files
+*.dmp
+*.mdmp
+core.*
+
+###################
+# Third Party Libraries
+###################
+# Don't ignore the thirdparty folder structure, but ignore downloads
+thirdparty/*/lib/
+thirdparty/*/bin/
+thirdparty/*/build/
+thirdparty/downloads/
+thirdparty/temp/
+
+# Keep important third party files
+!thirdparty/*/include/
+!thirdparty/*/LICENSE*
+!thirdparty/*/README*
+!thirdparty/*/CMakeLists.txt
+
+###################
+# Testing
+###################
+test_results/
+coverage/
+*.gcov
+*.gcda
+*.gcno
+Testing/
+
+###################
+# Package Managers
+###################
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Conan
+conandata.yml
+conanfile.txt.lock
+conanbuild.sh
+conanrun.sh
+
+###################
+# Keep Important Files
+###################
+# Always include these important files
+!.gitignore
+!.gitattributes
+!.clang-format
+!README.md
+!LICENSE
+!CMakeLists.txt
+!*.cmake.in
+!requirements.txt
+!setup.py
+!Dockerfile
+!docker-compose.yml
+
+###################
+# Project Specific Ignores
+###################
+# Nexus Engine specific temporary files
+nexus.log*
+engine_crash_*
+debug_output_*
+performance_*
+
+# Configuration backups
+*.ini.bak
+*.cfg.bak
+*.conf.bak
