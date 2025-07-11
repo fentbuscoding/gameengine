@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"G:/code/gameengine/build/cmake_install.cmake",
+		"G:/code/gameengine/build/src/cmake_install.cmake",
+		"G:/code/gameengine/build/python/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

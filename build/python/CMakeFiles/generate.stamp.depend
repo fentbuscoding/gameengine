@@ -1,0 +1,18 @@
+# CMake generation dependency list for this directory.
+C:/Program Files/CMake/share/cmake-4.1/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/CheckCXXCompilerFlag.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/CheckCXXSourceCompiles.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/FindPackageHandleStandardArgs.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/FindPackageMessage.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/FindPython/Support.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/FindPython3.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/Internal/CheckCompilerFlag.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/Internal/CheckFlagCommonConfig.cmake
+C:/Program Files/CMake/share/cmake-4.1/Modules/Internal/CheckSourceCompiles.cmake
+C:/Users/User/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0/LocalCache/local-packages/Python39/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake
+C:/Users/User/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0/LocalCache/local-packages/Python39/site-packages/pybind11/share/cmake/pybind11/pybind11Config.cmake
+C:/Users/User/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0/LocalCache/local-packages/Python39/site-packages/pybind11/share/cmake/pybind11/pybind11ConfigVersion.cmake
+C:/Users/User/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0/LocalCache/local-packages/Python39/site-packages/pybind11/share/cmake/pybind11/pybind11NewTools.cmake
+C:/Users/User/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0/LocalCache/local-packages/Python39/site-packages/pybind11/share/cmake/pybind11/pybind11Targets.cmake
+G:/code/gameengine/python/CMakeLists.txt
+G:/code/gameengine/python/nexus_api.py

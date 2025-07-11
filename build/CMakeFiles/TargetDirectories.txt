@@ -1,0 +1,8 @@
+G:/code/gameengine/build/CMakeFiles/INSTALL.dir
+G:/code/gameengine/build/CMakeFiles/ALL_BUILD.dir
+G:/code/gameengine/build/CMakeFiles/ZERO_CHECK.dir
+G:/code/gameengine/build/src/CMakeFiles/NexusCore.dir
+G:/code/gameengine/build/src/CMakeFiles/NexusEngine.dir
+G:/code/gameengine/build/src/CMakeFiles/INSTALL.dir
+G:/code/gameengine/build/python/CMakeFiles/nexus_python_bindings.dir
+G:/code/gameengine/build/python/CMakeFiles/INSTALL.dir
