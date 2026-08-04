@@ -1,2 +1,93 @@
-pybind11>=2.10.0
-numpy>=1.21.0
+# Nexus Game Engine - Python Requirements
+# Last updated: 2026-07-23
+
+# Core Python bindings
+pybind11>=2.11.1
+
+# Numeric and scientific computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Graphics and image processing
+pillow>=10.0.0
+imageio>=2.31.0
+
+# Data serialization and configuration
+pyyaml>=6.0
+toml>=0.10.2
+json5>=0.9.14
+
+# Game development utilities
+pygame>=2.5.0  # Optional: for prototyping and simple 2D games
+
+# OpenGL bindings (optional for cross-platform graphics)
+pyopengl>=3.1.7
+pyopengl-accelerate>=3.1.7
+
+# Asset processing
+soundfile>=0.12.1  # Audio file I/O
+wave>=0.0.2  # WAV file support
+
+# Networking (if ENABLE_NETWORKING is ON)
+requests>=2.31.0
+websockets>=11.0.3
+aiohttp>=3.8.5
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.1
+
+# Code quality and formatting
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.4.1
+pylint>=2.17.5
+
+# Documentation
+sphinx>=7.1.0
+sphinx-rtd-theme>=1.3.0
+sphinx-autodoc-typehints>=1.24.0
+
+# Build and packaging tools
+cmake>=3.26.0
+setuptools>=68.0.0
+wheel>=0.41.0
+
+# Performance profiling and debugging
+memory-profiler>=0.61.0
+py-spy>=0.3.14
+psutil>=5.9.5  # System and process utilities
+
+# Math and physics utilities
+sympy>=1.12  # Symbolic mathematics
+transforms3d>=0.4.1  # 3D coordinate transformations
+
+# Visualization (optional for debugging)
+matplotlib>=3.7.0
+
+# Optional: Advanced graphics processing
+# Uncomment for computer vision and advanced image processing
+# opencv-python>=4.8.0
+
+# Optional: Machine Learning for AI
+# Uncomment if you want to use ML-based AI features
+# tensorflow>=2.13.0
+# torch>=2.0.1
+# scikit-learn>=1.3.0
+
+# Optional: Audio processing
+# Uncomment for advanced audio features
+# librosa>=0.10.0
+# pydub>=0.25.1
+
+# Optional: 3D model processing
+# Uncomment for advanced model import/export
+# trimesh>=3.23.0
+# pygltflib>=1.16.0
+
+# Optional: Scripting enhancements
+# Uncomment for enhanced scripting capabilities
+# jinja2>=3.1.2  # Template engine
+# click>=8.1.6  # CLI creation
+
