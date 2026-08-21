@@ -126,7 +126,9 @@ jobs:
           libxrandr-dev \
           libxinerama-dev \
           libxcursor-dev \
-          libxi-dev
+          libxi-dev \
+          mesa-vulkan-drivers \
+          xvfb
 
     - name: Setup Dependencies
       run: |
@@ -160,6 +162,17 @@ jobs:
 
     - name: Run Tests
       run: ctest --test-dir build --output-on-failure
+
+    - name: Run the RHI demo (headless)
+      # Compiling the Vulkan backend proves nothing about whether it runs. This
+      # opens a real window under Xvfb and presents frames through the software
+      # rasteriser, which exercises instance and device creation, swap chain
+      # setup, submission and present. The demo exits non-zero if it stops
+      # before presenting the requested frames.
+      run: |
+        set -euo pipefail
+        ./build/bin/NexusRHIDemo --probe
+        xvfb-run -a -s "-screen 0 1280x720x24" ./build/bin/NexusRHIDemo --frames 30
 
     - name: Check Build Output
       run: |
@@ -238,6 +251,16 @@ jobs:
     - name: Run Tests
       run: ctest --test-dir build --output-on-failure
 
+    - name: Probe the RHI demo
+      # --probe only: the hosted macOS runners have no window server session, so
+      # opening a window is not possible. This still checks the demo links and
+      # that the Vulkan backend was compiled in, which is what the macOS-specific
+      # MoltenVK work in VulkanDevice.cpp depends on.
+      run: |
+        set -euo pipefail
+        ./build/bin/NexusRHIDemo --probe | tee probe.txt
+        grep -q vulkan probe.txt
+
     - name: Check Build Output
       run: |
         # This step used to print a failure message and still exit 0, so a
@@ -308,7 +331,7 @@ jobs:
         test -f "QUICKSTART.md" && echo "✓ QUICKSTART.md found"
         test -f "docs/OPENGL_SETUP.md" && echo "✓ OPENGL_SETUP.md found"
         test -f "docs/GAME_IMPORTER_GUIDE.md" && echo "✓ GAME_IMPORTER_GUIDE.md found"
-        test -f "CODEBASE_AUDIT.md" && echo "✓ CODEBASE_AUDIT.md found"
+        test -f "docs/PORTABILITY.md" && echo "✓ PORTABILITY.md found"
         echo "Documentation check complete"
 
   build-summary:

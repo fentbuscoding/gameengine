@@ -19,10 +19,12 @@ That is no longer the case. The split now looks like this:
 | Scripting (Lua, Python) | ✅ | ✅ |
 | Asset importers and `NexusAssetConverter` | ✅ | ✅ |
 | Test suite | ✅ | ✅ |
-| RHI: Vulkan backend | ✅ | ✅ (needs SDL2) |
+| Windowing (`Nexus::Window`) | ✅ | ✅ (needs SDL2) |
+| RHI: Vulkan backend | ✅ | ✅ Linux; ✅ macOS via MoltenVK |
 | RHI: OpenGL backend | ✅ | ✅ (needs SDL2 + GLAD) |
 | RHI: Direct3D 9 / 10 / 11 | ✅ | ❌ Windows-only by nature |
 | Legacy D3D11 renderer, Win32 UI, DirectInput, XAudio2 | ✅ | ❌ see below |
+| `NexusRHIDemo` (window + RHI) | ✅ | ✅ |
 | `NexusEngine` executable | ✅ | ❌ depends on the legacy renderer |
 
 ## The compatibility layer: `compat/win32/`
@@ -108,7 +110,70 @@ Two things keep this from quietly reverting:
    (`PhysXEngine.h` needs PhysX; `AdvancedPhysicsEngine.h` needs Bullet); both
    now fail with an explicit `#error` naming the missing dependency.
 
-## Building on Linux
+## Windowing and the RHI
+
+`Nexus::Window` (`include/Window.h`) is the cross-platform window, backed by
+SDL2. It is deliberately opaque — no SDL type appears in the header — and
+`GetNativeHandle()` returns the `SDL_Window*` that the Vulkan backend needs for
+surface creation. `Platform::CreateGameWindow` forwards to it.
+
+Two sizes, and the distinction matters:
+
+- `GetSize` is the logical window size the window manager works in.
+- `GetDrawableSize` is the backing store in **pixels**, and is what a swap chain
+  must be created at. On a HiDPI display they differ by the display scale: a
+  swap chain built from the logical size renders at a fraction of the window's
+  real resolution on every Retina Mac.
+
+`ConsumeResize` reports a pending resize once and hands back the new drawable
+size, so a host loop recreates its swap chain exactly once per resize. It is
+driven by `SDL_WINDOWEVENT_SIZE_CHANGED` rather than `RESIZED`, so dragging a
+window between displays with different scale factors — which changes the
+drawable size while the logical size stays put — also invalidates the swap
+chain.
+
+## Running something
+
+`NexusRHIDemo` is the runnable target on Linux and macOS. It opens a window,
+brings up an RHI device on it and presents frames:
+
+```bash
+./build/bin/NexusRHIDemo                # run until the window is closed
+./build/bin/NexusRHIDemo --frames 60    # present 60 frames then exit (CI smoke test)
+./build/bin/NexusRHIDemo --probe        # report which backends are compiled in
+./build/bin/NexusRHIDemo --api opengl   # pick a backend explicitly
+```
+
+With `--frames`, exiting before that many frames have been presented is a
+failure, so a broken swap chain cannot pass silently.
+
+`src/tools/rhi_demo.cpp` is about 250 lines and is the reference for how window,
+swap chain, resize handling and device loss fit together.
+
+## Vulkan on macOS
+
+macOS has no native Vulkan driver. MoltenVK translates Vulkan to Metal, and the
+Vulkan loader finds it through an ICD manifest. Three things follow, all handled
+in `src/rhi/vulkan/VulkanDevice.cpp`:
+
+- **Instance API version is negotiated, not assumed.** MoltenVK reports Vulkan
+  1.2; requesting more than the loader supports fails `vkCreateInstance`
+  outright.
+- **`VK_KHR_portability_enumeration` is enabled** along with
+  `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR`. Loaders from 1.3.216
+  onwards hide non-conformant drivers unless an instance opts in, so without it
+  `vkEnumeratePhysicalDevices` reports zero GPUs on every Mac.
+- **`VK_KHR_portability_subset` is enabled at device creation** whenever the
+  physical device exposes it. The specification requires this; omitting it is
+  invalid usage.
+
+Configure-time output warns if the headers are present but no MoltenVK ICD
+manifest is installed — that combination builds cleanly and then finds no GPUs
+at runtime.
+
+## Building
+
+### Linux
 
 ```bash
 sudo apt-get install -y build-essential cmake libsdl2-dev libvulkan-dev
@@ -117,5 +182,35 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
+For a headless check (CI, containers) install `mesa-vulkan-drivers` and
+`xvfb`, then:
+
+```bash
+xvfb-run -s "-screen 0 1280x720x24" ./build/bin/NexusRHIDemo --frames 30
+```
+
+### macOS
+
+```bash
+brew install cmake sdl2 molten-vk vulkan-headers vulkan-loader
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+Homebrew's prefix is added to CMake's search path automatically, which is what
+makes Apple Silicon (`/opt/homebrew`) work without extra flags.
+
+### Windows
+
+```bat
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+```
+
 Every third-party dependency is optional. A missing one disables its feature
-with a message; none of them stop the build.
+with a message; none of them stop the build. The one exception worth knowing:
+the Vulkan backend needs SDL2 as well as the Vulkan headers, because it creates
+its surface through SDL — configuring with Vulkan but no SDL2 reports that
+rather than producing a wall of compile errors.

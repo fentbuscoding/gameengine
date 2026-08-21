@@ -58,6 +58,19 @@ nexus_add_test(NexusCoreTests
     ${CMAKE_SOURCE_DIR}/src/utils/Logger.cpp
 )
 
+# Importer tests. Listed as sources rather than linked against NexusCore so the
+# suite stays independent of whether SDL2, Vulkan or Python were found - the
+# importers are pure text processing and should be testable in any configuration.
+nexus_add_test(NexusImporterTests
+    ImporterTests.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/GameImporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/GodotImporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/SourceEngineImporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/UnityImporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/UnrealImporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/Logger.cpp
+)
+
 # ---------------------------------------------------------------------------
 # Header self-containment
 #

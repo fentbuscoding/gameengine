@@ -13,12 +13,44 @@ Nexus Engine includes a comprehensive game importer system that allows you to im
 
 ## Supported Engines
 
-| Engine | Version Support | Import Quality | Script Conversion | Asset Support |
-|--------|----------------|----------------|-------------------|---------------|
-| **Unity** | 2018.4 - 2023.x | Excellent | C# → C++/Lua/Python | Full |
-| **Unreal Engine** | UE4 (4.20+), UE5 | Very Good | Blueprint → C++/Lua | Full |
-| **Godot** | 3.x, 4.x | Good | GDScript → C++/Lua | Full |
-| **Source Engine** | HL2 - CS:GO | Good | Limited | Geometry + Materials |
+What follows is what the importer does **today**, verified by
+`tests/ImporterTests.cpp`. The line between a real conversion and a
+best-effort one matters here, because the importer used to report success
+regardless: every converter logged a line and returned `true`, so an import that
+produced no output still came back with `success == true`. It no longer does —
+an import that converts nothing fails, and anything that cannot be converted is
+recorded as a warning naming the reason.
+
+| Engine | Scenes / levels | Materials | Scripts | Meshes & textures |
+|---|---|---|---|---|
+| **Godot** 3.x / 4.x | ✅ `.tscn` parsed in full, including the node hierarchy and transforms | ✅ `.tres` / `.res` | ⚠️ GDScript → Lua/C++ by pattern substitution; expect to finish by hand | ➡️ copied through |
+| **Source Engine** | ✅ `.vmf` — brushes, faces, entities, materials | ✅ `.vmt`, including `patch` materials | — | ❌ `.bsp`, `.vtf`, `.mdl` are binary: reported, not converted |
+| **Unity** 2018.4+ | ⚠️ `.unity` — names and transforms only | ⚠️ shader and texture **GUIDs** only; resolving them needs the `.meta` database | ⚠️ C# → Lua/C++ by pattern substitution | ➡️ copied through |
+| **Unreal** UE4/UE5 | ⚠️ text `.t3d` exports only | ⚠️ text exports only | ⚠️ Blueprint → Lua/C++ from text exports | ❌ `.umap` / `.uasset` are binary packages |
+
+Legend: ✅ parsed properly · ⚠️ partial, and says so · ➡️ copied unchanged ·
+❌ not possible without implementing a proprietary binary format
+
+### Why the binary formats are refused rather than attempted
+
+`.umap`, `.uasset` and `.bsp` are engine-internal binary formats whose layout is
+version-specific and undocumented. The importer detects them — Unreal packages
+by their `0x9E2A83C1` magic — and records *why* they were skipped, along with
+what to do instead (re-export as `.t3d` or FBX; decompile a BSP to `.vmf`).
+That is more useful than a converter that runs and produces an empty scene.
+
+### Output
+
+Every conversion writes JSON:
+
+- `<output>/levels/<name>.nxscene`, `<output>/scenes/<name>.nxscene` — scenes
+- `<output>/materials/<name>.nxmat` — materials
+- `<output>/import_manifest.json` — what was converted, which source produced
+  which output, and every warning and error
+
+Output paths preserve the file extension and are deduplicated, so two assets
+sharing a stem — a `player.tscn` and a `player.gd`, or same-named materials in
+different folders — no longer overwrite each other.
 
 ---
 

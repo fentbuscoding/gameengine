@@ -161,6 +161,19 @@ private:
     std::map<std::string, std::string> ParseKeyValueFile(const std::string& content);
     std::string ConvertYAMLToJSON(const std::string& yamlContent);
 
+    /// Writes import_manifest.json into the output directory: what was
+    /// converted, what was skipped and why. Without it an import leaves no
+    /// record of which source asset produced which output, which is the first
+    /// thing anyone needs when a conversion looks wrong.
+    void WriteImportManifest(const std::string& projectPath,
+                             EngineType engineType,
+                             const ImportResult& result);
+
+    /// Records that @p assetPath could not be converted, with @p reason. Callers
+    /// use this instead of quietly returning true, which is what the placeholder
+    /// converters used to do.
+    void RecordUnconverted(const std::string& assetPath, const std::string& reason);
+
 private:
     Engine* engine_;
     ImportSettings currentSettings_;
@@ -229,6 +242,66 @@ public:
     static bool ParseMaterialFile(const std::string& materialFile, std::map<std::string, std::string>& materialData);
     static std::string ConvertBlueprintToLua(const UnrealBlueprint& blueprint);
     static std::string ConvertBlueprintToCpp(const UnrealBlueprint& blueprint);
+};
+
+/**
+ * Valve Source Engine asset parsers.
+ *
+ * EngineType::SourceEngine has been in the enum since the importer was written,
+ * but nothing detected it, ImportSourceEngineGame was declared and never
+ * defined, and the VMF reader in GameImporter used a regex that truncated every
+ * nested block. These parse the two text formats Source ships that can be
+ * converted without reverse-engineering a binary layout: VMF (Hammer's map
+ * source) and VMT (material definitions). Compiled BSP maps and VTF textures
+ * are binary and are reported as unconverted rather than silently skipped.
+ */
+class SourceEngineImporter {
+public:
+    struct MapEntity {
+        std::string className;
+        std::string targetName;
+        std::string model;
+        XMFLOAT3 origin;
+        XMFLOAT3 angles;
+        std::map<std::string, std::string> properties;
+
+        MapEntity() : origin{0.0f, 0.0f, 0.0f}, angles{0.0f, 0.0f, 0.0f} {}
+    };
+
+    struct MapSolid {
+        /// One material per brush face, in file order.
+        std::vector<std::string> faceMaterials;
+    };
+
+    struct Map {
+        std::vector<MapSolid> worldSolids;
+        std::vector<MapEntity> entities;
+
+        /// Distinct materials referenced anywhere in the map, sorted. This is
+        /// the list an asset pipeline needs in order to know what to convert.
+        std::vector<std::string> materials;
+    };
+
+    struct Material {
+        std::string shader;
+        std::string baseTexture;
+        std::string bumpMap;
+        std::string surfaceProperty;
+        bool translucent = false;
+        std::map<std::string, std::string> parameters;
+    };
+
+    /// Parses VMF text. Split from the file-reading overload so it can be
+    /// tested without touching the filesystem.
+    static bool ParseMap(const std::string& vmfText, Map& outMap);
+    static bool ParseMapFile(const std::string& vmfPath, Map& outMap);
+
+    static bool ParseMaterial(const std::string& vmtText, Material& outMaterial);
+    static bool ParseMaterialFile(const std::string& vmtPath, Material& outMaterial);
+
+    /// True when @p projectPath looks like an extracted Source game directory:
+    /// a gameinfo.txt, or the maps/ + materials/ pair every mod has.
+    static bool LooksLikeSourceGame(const std::string& projectPath);
 };
 
 /**
