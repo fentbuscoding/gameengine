@@ -7,6 +7,11 @@
 #include <typeindex>
 #include <bitset>
 #include <queue>
+#include <array>       // std::array for the signature table
+#include <algorithm>   // std::remove - without this, the unqualified call in
+                       // SystemManager::EntityDestroyed resolves to C's
+                       // ::remove(const char*) from <cstdio> instead
+#include <cassert>
 
 namespace Nexus {
 
@@ -32,43 +37,58 @@ template<typename T>
 class ComponentArray : public IComponentArray {
 public:
     void InsertData(Entity entity, T component) {
-        if (entityToIndexMap_.find(entity) != entityToIndexMap_.end()) {
+        auto existing = entityToIndexMap_.find(entity);
+        if (existing != entityToIndexMap_.end()) {
             // Component already exists, update it
-            size_t index = entityToIndexMap_[entity];
-            componentArray_[index] = component;
+            componentArray_[existing->second] = component;
             return;
         }
 
-        size_t newIndex = size_;
+        // push_back rather than indexing: componentArray_ was never grown, so
+        // `componentArray_[newIndex] = component` wrote past the end of an empty
+        // vector on the very first AddComponent for any component type. Growing
+        // the storage with the insert also keeps componentArray_.size() equal to
+        // the live component count, which is what GetAllComponents relies on.
+        const size_t newIndex = componentArray_.size();
+        componentArray_.push_back(component);
         entityToIndexMap_[entity] = newIndex;
         indexToEntityMap_[newIndex] = entity;
-        componentArray_[newIndex] = component;
-        ++size_;
+        size_ = componentArray_.size();
     }
 
     void RemoveData(Entity entity) {
-        if (entityToIndexMap_.find(entity) == entityToIndexMap_.end()) {
+        auto removed = entityToIndexMap_.find(entity);
+        if (removed == entityToIndexMap_.end()) {
             return; // Component doesn't exist
         }
 
-        // Copy last element to deleted element's place to maintain density
-        size_t indexOfRemovedEntity = entityToIndexMap_[entity];
-        size_t indexOfLastElement = size_ - 1;
+        // Move the last element into the freed slot to keep the array dense,
+        // then drop the tail so size stays in step with the live count.
+        const size_t indexOfRemovedEntity = removed->second;
+        const size_t indexOfLastElement = componentArray_.size() - 1;
         componentArray_[indexOfRemovedEntity] = componentArray_[indexOfLastElement];
 
         // Update map to point to moved spot
-        Entity entityOfLastElement = indexToEntityMap_[indexOfLastElement];
+        const Entity entityOfLastElement = indexToEntityMap_[indexOfLastElement];
         entityToIndexMap_[entityOfLastElement] = indexOfRemovedEntity;
         indexToEntityMap_[indexOfRemovedEntity] = entityOfLastElement;
 
         entityToIndexMap_.erase(entity);
         indexToEntityMap_.erase(indexOfLastElement);
 
-        --size_;
+        componentArray_.pop_back();
+        size_ = componentArray_.size();
     }
 
+    /// Precondition: the entity has this component. Callers should check
+    /// HasData first.
     T& GetData(Entity entity) {
-        return componentArray_[entityToIndexMap_[entity]];
+        auto found = entityToIndexMap_.find(entity);
+        // find rather than operator[]: the latter default-inserts index 0 for an
+        // absent entity, so a lookup miss silently returned - and allowed writes
+        // to - some other entity's component.
+        assert(found != entityToIndexMap_.end() && "GetData called for an entity without this component");
+        return componentArray_[found->second];
     }
 
     bool HasData(Entity entity) const {
@@ -81,7 +101,8 @@ public:
         }
     }
 
-    // Iterate over all components
+    /// All live components, densely packed. Index i corresponds to the entity
+    /// returned by GetEntityAt(i).
     std::vector<T>& GetAllComponents() { return componentArray_; }
     size_t GetSize() const { return size_; }
 

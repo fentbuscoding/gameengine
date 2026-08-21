@@ -7,25 +7,20 @@
 
 namespace Nexus {
 
-// Cross-platform vector types
-#ifdef _WIN32
-    #include <DirectXMath.h>
-    using PhysicsVector3 = PhysicsVector3;
-    using PhysicsQuaternion = PhysicsQuaternion;
-#else
-    // Linux/cross-platform vector types
-    struct PhysicsVector3 {
-        float x, y, z;
-        PhysicsVector3() : x(0), y(0), z(0) {}
-        PhysicsVector3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
-    };
-
-    struct PhysicsQuaternion {
-        float x, y, z, w;
-        PhysicsQuaternion() : x(0), y(0), z(0), w(1) {}
-        PhysicsQuaternion(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
-    };
-#endif
+// Physics vector types.
+//
+// These were previously split across a #ifdef _WIN32: the Windows branch read
+// `using PhysicsVector3 = PhysicsVector3;` - a self-referential alias that names
+// nothing - and did its #include from inside namespace Nexus, which would have
+// dragged all of DirectXMath into the namespace. The other branch declared
+// separate structs that had no conversion to or from XMFLOAT3, so the
+// implementation's `physObj.position = XMFLOAT3(...)` could not compile there.
+//
+// Aliasing the engine's own math types resolves all three: one definition on
+// every platform, and physics transforms interoperate with the rest of the
+// engine without a conversion layer.
+using PhysicsVector3 = DirectX::XMFLOAT3;
+using PhysicsQuaternion = DirectX::XMFLOAT4;
 
 // Physics transform structure
 struct PhysicsTransform {

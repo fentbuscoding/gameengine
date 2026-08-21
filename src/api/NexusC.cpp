@@ -90,12 +90,15 @@ void nexus_engine_run(NexusEngine* engine) {
                 graphics->Present();
             }
             
-            // Check for ESC key to exit
-            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-                e->RequestExit();
+            // Check for ESC key to exit. Uses the engine's own input state so
+            // this behaves the same on every platform.
+            if (auto* input = e->GetInput()) {
+                if (input->IsKeyDown(KeyCode::Escape)) {
+                    e->RequestExit();
+                }
             }
             
-            Sleep(16); // ~60 FPS
+            Platform::Sleep(16); // ~60 FPS
         }
     } catch (...) {
         // Handle errors

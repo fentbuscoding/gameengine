@@ -70,13 +70,21 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}} --parallel
 
+    - name: Run Tests
+      run: ctest --test-dir build --build-config ${{env.BUILD_TYPE}} --output-on-failure
+      shell: powershell
+
     - name: Check Build Output
       run: |
-        if (Test-Path "build\bin\${{env.BUILD_TYPE}}\NexusCore.lib") {
-          Write-Host "✓ Build successful - NexusCore.lib created"
+        # This step used to report failure and then exit 0, so a missing library
+        # never turned the job red. Now it actually fails.
+        $lib = Get-ChildItem -Path build -Recurse -Filter NexusCore.lib -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($lib) {
+          Write-Host "OK: NexusCore.lib at $($lib.FullName)"
         } else {
-          Write-Host "✗ Build may have failed - NexusCore.lib not found"
-          Get-ChildItem build\bin -Recurse
+          Write-Host "FAIL: NexusCore.lib was not produced"
+          Get-ChildItem build -Recurse -Include *.lib, *.exe | ForEach-Object { Write-Host $_.FullName }
+          exit 1
         }
       shell: powershell
 
@@ -150,14 +158,23 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}} --parallel $(nproc)
 
+    - name: Run Tests
+      run: ctest --test-dir build --output-on-failure
+
     - name: Check Build Output
       run: |
-        if [ -f "build/bin/libNexusCore.a" ] || [ -f "build/lib/libNexusCore.a" ]; then
-          echo "✓ Build successful - NexusCore library created"
-          find build -name "*.a" -o -name "*.so"
+        # This step used to print a failure message and still exit 0, so a
+        # missing library never turned the job red. An explicit exit makes it a
+        # real gate. The library path also varies by generator, so this searches
+        # rather than testing two hard-coded paths.
+        set -euo pipefail
+        if find build -name "libNexusCore.a" | grep -q .; then
+          echo "OK: NexusCore library produced"
+          find build \( -name "*.a" -o -name "*.so" \) -print
         else
-          echo "✗ Build may have failed"
-          find build -type f
+          echo "FAIL: libNexusCore.a was not produced"
+          find build -type f -name "*.a" -print
+          exit 1
         fi
 
     - name: Upload Artifacts
@@ -218,14 +235,23 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}} --parallel $(sysctl -n hw.ncpu)
 
+    - name: Run Tests
+      run: ctest --test-dir build --output-on-failure
+
     - name: Check Build Output
       run: |
-        if [ -f "build/bin/libNexusCore.a" ] || [ -f "build/lib/libNexusCore.a" ]; then
-          echo "✓ Build successful - NexusCore library created"
-          find build -name "*.a" -o -name "*.dylib"
+        # This step used to print a failure message and still exit 0, so a
+        # missing library never turned the job red. An explicit exit makes it a
+        # real gate. The library path also varies by generator, so this searches
+        # rather than testing two hard-coded paths.
+        set -euo pipefail
+        if find build -name "libNexusCore.a" | grep -q .; then
+          echo "OK: NexusCore library produced"
+          find build \( -name "*.a" -o -name "*.dylib" \) -print
         else
-          echo "✗ Build may have failed"
-          find build -type f
+          echo "FAIL: libNexusCore.a was not produced"
+          find build -type f -name "*.a" -print
+          exit 1
         fi
 
     - name: Upload Artifacts

@@ -23,6 +23,12 @@ jobs:
     - name: Build
       run: cmake --build build --parallel 4
 
+    - name: Run Tests
+      # Covers the portable math library, the ECS, the Valve block parser and
+      # the platform layer, plus the header self-containment check that keeps
+      # the cross-platform build from regressing.
+      run: ctest --test-dir build --output-on-failure
+
     - name: Check Binary Size
       run: |
         ls -lh build/bin/ || echo "No binaries built"
@@ -62,5 +68,15 @@ jobs:
 
     - name: Check Line Endings
       run: |
-        echo "Checking for CRLF line endings in source files..."
-        ! git grep -I --files-with-matches $'\r' -- '*.cpp' '*.h' '*.hpp' || (echo "Found CRLF line endings" && exit 1)
+        # .gitattributes declares `*.cpp text eol=crlf`, so a checkout is
+        # *supposed* to have CRLF in the working tree. This check used to scan
+        # the working tree and therefore failed on every run, on files nobody
+        # had touched. What actually matters is that the blobs stored in the
+        # repository are LF-normalised, which is what `--cached` inspects.
+        echo "Checking that committed source files are LF-normalised..."
+        if git grep -I --cached --files-with-matches $'\r' -- '*.cpp' '*.h' '*.hpp'; then
+          echo "Found CRLF line endings committed to the repository."
+          echo "Re-normalise with: git add --renormalize ."
+          exit 1
+        fi
+        echo "OK: all committed source files are LF-normalised"

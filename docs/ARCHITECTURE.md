@@ -61,8 +61,12 @@ Nexus is a modern, cross-platform game engine built with C++17/20, designed for 
 - Ragdoll physics
 
 **Technologies**:
-- Bullet Physics (primary)
-- NVIDIA PhysX (optional)
+- Jolt Physics (primary, vendored in `thirdparty/joltphysics`)
+- NVIDIA PhysX (optional, `-DENABLE_PHYSX=ON`)
+
+> Bullet was the original choice and was replaced by Jolt; it is no longer
+> vendored. `include/AdvancedPhysicsEngine.h` still declares a Bullet-based API
+> and cannot be compiled without that SDK.
 
 ### 3. Audio System (`src/audio/`)
 **Purpose**: Multi-channel 3D audio with spatial awareness

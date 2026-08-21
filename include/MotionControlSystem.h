@@ -10,11 +10,10 @@
 #include <mutex>
 #include <atomic>
 
-#ifdef _WIN32
-    #include <xinput.h>
-    #include <hidusage.h>
-    #include <hidsdi.h>
-#endif
+// See AudioSystem.h: resolves to the SDK on Windows, to compat/win32 elsewhere.
+#include <xinput.h>
+#include <hidusage.h>
+#include <hidsdi.h>
 
 #include <DirectXMath.h>
 

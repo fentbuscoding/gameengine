@@ -195,6 +195,21 @@ public:
                                bool enableScaleCompression);
 
     // Debug and Visualization
+
+    /// A single line segment emitted for skeleton visualisation.
+    struct DebugLine {
+        DirectX::XMFLOAT3 start{0.0f, 0.0f, 0.0f};
+        DirectX::XMFLOAT3 end{0.0f, 0.0f, 0.0f};
+        DirectX::XMFLOAT4 color{1.0f, 1.0f, 1.0f, 1.0f};
+    };
+
+    /// A sphere marker emitted for IK target visualisation.
+    struct DebugSphere {
+        DirectX::XMFLOAT3 center{0.0f, 0.0f, 0.0f};
+        float radius = 1.0f;
+        DirectX::XMFLOAT4 color{1.0f, 1.0f, 1.0f, 1.0f};
+    };
+
     void EnableDebugVisualization(bool enable) { debugVisualizationEnabled_ = enable; }
     std::vector<DebugLine> GetSkeletonDebugLines(uint32_t stateId);
     std::vector<DebugSphere> GetIKDebugSpheres(uint32_t stateId);
