@@ -1,11 +1,15 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <string>
 #include <unordered_map>
 #include <functional>
+#include <thread>   // std::thread for the worker pool below
+#include <queue>    // std::queue for the pending-command queue
+#include <atomic>
 
 #ifdef NEXUS_FMOD_ENABLED
 #include <fmod.hpp>
@@ -136,7 +140,10 @@ public:
     ~NextGenAudioEngine();
 
     // Initialization
-    bool Initialize(const AudioSettings& settings = AudioSettings{});
+    // AudioSettings is a nested type, so `= AudioSettings{}` as a default
+    // argument is ill-formed here; overloads are the portable equivalent.
+    bool Initialize(const AudioSettings& settings);
+    bool Initialize();
     void Shutdown();
 
     // Settings
@@ -221,6 +228,18 @@ public:
     void Update(float deltaTime);
 
     // Debug and Analysis
+
+    /// Snapshot of runtime mixer activity, sampled per frame.
+    struct AudioStats {
+        uint32_t activeVoices = 0;
+        uint32_t totalVoices = 0;
+        uint32_t streamingSources = 0;
+        float cpuUsagePercent = 0.0f;
+        float peakLevel = 0.0f;
+        float rmsLevel = 0.0f;
+        size_t memoryUsageBytes = 0;
+    };
+
     void EnableDebugVisualization(bool enable) { debugVisualizationEnabled_ = enable; }
     AudioStats GetAudioStats() const { return stats_; }
     std::vector<float> GetSpectrumData(int numBands = 64);

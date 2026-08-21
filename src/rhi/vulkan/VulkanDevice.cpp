@@ -14,7 +14,7 @@
 namespace Nexus {
 namespace RHI {
 
-static VkFormat ToVulkanFormat(TextureFormat format) {
+VkFormat ToVulkanFormat(TextureFormat format) {
     switch (format) {
         case TextureFormat::R8_UNORM: return VK_FORMAT_R8_UNORM;
         case TextureFormat::RG8_UNORM: return VK_FORMAT_R8G8_UNORM;

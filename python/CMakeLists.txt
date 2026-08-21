@@ -19,11 +19,19 @@ if(NOT pybind11_FOUND)
     )
     
     if(pybind11_DIR)
-        message("-- Found pybind11 at: ${pybind11_DIR}")
-        find_package(pybind11 REQUIRED PATHS ${pybind11_DIR})
-    else()
-        message(FATAL_ERROR "pybind11 not found! Please install it with: pip install pybind11")
+        message(STATUS "Found pybind11 at: ${pybind11_DIR}")
+        find_package(pybind11 QUIET PATHS ${pybind11_DIR})
     endif()
+endif()
+
+# Python bindings are optional. A missing pybind11 used to abort configuration
+# for the entire project, so anyone without it could not build the engine at all
+# - including the parts that have nothing to do with Python. Skip the bindings
+# instead and let the rest of the build proceed.
+if(NOT pybind11_FOUND)
+    message(STATUS "pybind11 not found - Python bindings will not be built.")
+    message(STATUS "  Install with: pip install pybind11")
+    return()
 endif()
 
 # Find existing Python binding sources

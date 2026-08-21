@@ -1,5 +1,11 @@
 #pragma once
 
+// PhysX is an optional dependency (ENABLE_PHYSX, off by default). Including its
+// SDK unconditionally made this header unparseable on any machine without it.
+#ifndef NEXUS_PHYSX_ENABLED
+#error "PhysXEngine.h requires PhysX. Configure with -DENABLE_PHYSX=ON."
+#endif
+
 #include <PxPhysicsAPI.h>
 #include <DirectXMath.h>
 #include <memory>

@@ -53,7 +53,35 @@
     typedef HWND WindowHandle;
     typedef HINSTANCE InstanceHandle;
 #else
-    // Platform abstraction for other platforms
+    // ---- Non-Windows -------------------------------------------------------
+    // compat/win32 supplies a portable DirectXMath implementation and the Win32
+    // typedefs the engine's headers are written against. Including them here,
+    // in the same order and with the same `using` directive as the Windows
+    // branch, means shared engine code sees an identical set of names on every
+    // platform and needs no per-platform spelling.
+    #include <Windows.h>
+    #include <DirectXMath.h>
+
+    // Engine headers declare Direct3D interface pointers as members and, on
+    // Windows, picked these up transitively through this header. Mirroring that
+    // include set here keeps those declarations parsing off Windows too - the
+    // compat versions declare the interfaces without defining them, so only
+    // declarations work and no real D3D call can slip through.
+    #include <dxgi.h>
+    #include <d3d11.h>
+    #include <d3dcompiler.h>
+    #include <dinput.h>
+    #include <dsound.h>
+
+    using namespace DirectX;
+
+    // Legacy DirectX 9 spellings, kept in step with the Windows branch above.
+    typedef XMFLOAT2 D3DXVECTOR2;
+    typedef XMFLOAT3 D3DXVECTOR3;
+    typedef XMFLOAT4 D3DXVECTOR4;
+    typedef XMMATRIX D3DXMATRIX;
+    typedef XMFLOAT4 D3DXQUATERNION;
+
     typedef void* WindowHandle;
     typedef void* InstanceHandle;
 #endif
@@ -89,6 +117,11 @@ public:
     // Timing
     static double GetTime();
     static void Sleep(int milliseconds);
+
+    /// Percentage of physical RAM currently in use system-wide, 0-100.
+    /// Returns -1 when the platform cannot report it, so callers can tell
+    /// "unknown" apart from "not under pressure".
+    static int GetSystemMemoryUsagePercent();
     
     // File system
     static bool FileExists(const std::string& path);

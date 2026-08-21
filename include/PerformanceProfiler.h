@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 #include <chrono>
+#include <cinttypes>   // PRIu64
+#include <cstdint>
 #include <algorithm>
 #include "imgui.h"
 
@@ -112,7 +114,10 @@ public:
             ImGui::Separator();
 
             // Stats
-            ImGui::Text("Total Frames: %llu", frameCount_);
+            // PRIu64 rather than %llu: uint64_t is `unsigned long` on LP64
+            // targets, so %llu is a type mismatch and therefore undefined
+            // behaviour in a varargs call.
+            ImGui::Text("Total Frames: %" PRIu64, frameCount_);
             ImGui::Text("Avg FPS: %.1f", GetAverageFPS());
             ImGui::Text("Min FPS: %.1f", GetMinFPS());
             ImGui::Text("Max FPS: %.1f", GetMaxFPS());

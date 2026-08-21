@@ -9,6 +9,14 @@
 namespace Nexus {
 namespace RHI {
 
+/// Maps an engine texture format to its Vulkan equivalent.
+///
+/// This was defined `static` in VulkanDevice.cpp, giving it internal linkage,
+/// while VulkanPipeline.cpp called it - so the Vulkan backend did not compile
+/// as soon as both files were built together. Declaring it here gives the
+/// backend a single shared definition.
+VkFormat ToVulkanFormat(TextureFormat format);
+
 class VulkanDevice : public RHIDevice {
 public:
     VulkanDevice();

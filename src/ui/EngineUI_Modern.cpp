@@ -2,6 +2,7 @@
 #include "ModernTheme.h"
 #include "Engine.h"
 #include "Logger.h"
+#include <cstdio>
 #include "GraphicsDevice.h"
 #include "InputManager.h"
 
@@ -111,7 +112,7 @@ void ModernProgressBar(float progress, const char* label, const ImVec4& color = 
 
     // Progress text
     char buf[32];
-    sprintf_s(buf, "%.0f%%", progress * 100.0f);
+    std::snprintf(buf, sizeof(buf), "%.0f%%", progress * 100.0f);
     ImVec2 text_size = ImGui::CalcTextSize(buf);
     draw_list->AddText(
         ImVec2(pos.x + (size.x - text_size.x) * 0.5f, pos.y + (size.y - text_size.y) * 0.5f),
@@ -130,7 +131,7 @@ void StatusBadge(const char* text, const ImVec4& color, const char* icon = nullp
 
     if (icon) {
         char label[256];
-        sprintf_s(label, "%s %s", icon, text);
+        std::snprintf(label, sizeof(label), "%s %s", icon, text);
         ImGui::Button(label);
     } else {
         ImGui::Button(text);
@@ -289,13 +290,13 @@ void EngineUI::RenderModernDashboard() {
         BeginCard("⚡ Performance", ImVec4(0.4f, 0.8f, 0.4f, 1.0f));
         {
             char fps_text[32];
-            sprintf_s(fps_text, "%.1f", metrics_.fps);
+            std::snprintf(fps_text, sizeof(fps_text), "%.1f", metrics_.fps);
             StatDisplay("FPS", fps_text, "🎯");
 
             ImGui::Spacing();
 
             char frame_time[32];
-            sprintf_s(frame_time, "%.2f ms", metrics_.frameTime);
+            std::snprintf(frame_time, sizeof(frame_time), "%.2f ms", metrics_.frameTime);
             StatDisplay("Frame Time", frame_time, "⏱️");
 
             ImGui::Spacing();
@@ -452,7 +453,7 @@ void EngineUI::RenderMainMenuBar() {
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 250);
 
         char fps_text[32];
-        sprintf_s(fps_text, "🎯 %.0f FPS", metrics_.fps);
+        std::snprintf(fps_text, sizeof(fps_text), "🎯 %.0f FPS", metrics_.fps);
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "%s", fps_text);
 
         ImGui::SameLine();

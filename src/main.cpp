@@ -9,8 +9,14 @@
 #include "Engine.h"
 #include "Logger.h"
 #include "RHI/RHIDevice.h"
+#include "ScriptingEngine.h"   // Engine.h only forward-declares it.
 #include "EngineConfig.h"
-#include <SDL2/SDL.h>
+// SDL2 is an optional dependency (ENABLE_SDL2 / NEXUS_SDL2_ENABLED). It was
+// included unconditionally, so the engine executable could not be built at all
+// without it - even for backends that never use SDL.
+#ifdef NEXUS_SDL2_ENABLED
+    #include <SDL2/SDL.h>
+#endif
 #include <iostream>
 #include <string>
 #include <vector>
@@ -19,6 +25,13 @@
 #include <fstream>
 
 namespace {
+    /// Tears down SDL when it is compiled in; a no-op otherwise.
+    void ShutdownSDL() {
+#ifdef NEXUS_SDL2_ENABLED
+        SDL_Quit();
+#endif
+    }
+
     // Version information
     constexpr const char* ENGINE_VERSION = "2.0.0";
     constexpr const char* BUILD_DATE = __DATE__;
@@ -345,11 +358,13 @@ int main(int argc, char* argv[]) {
     try {
         PrintBanner();
 
+#ifdef NEXUS_SDL2_ENABLED
         // Initialize SDL
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
             std::cerr << "❌ Failed to initialize SDL: " << SDL_GetError() << "\n";
             return -1;
         }
+#endif
 
         std::cout << "🎨 Graphics API: " << GetAPIName(args.graphicsAPI) << "\n";
         PrintFeatures();
@@ -374,7 +389,7 @@ int main(int argc, char* argv[]) {
         if (!initSuccess) {
             std::cerr << "❌ Failed to initialize Nexus Engine!\n";
             std::cerr << "   Check logs/engine.log for detailed error information.\n";
-            SDL_Quit();
+            ShutdownSDL();
             return -1;
         }
 
@@ -401,14 +416,14 @@ int main(int argc, char* argv[]) {
                     std::cerr << "❌ Failed to execute script: " << args.scriptFile << "\n";
                     std::cerr << "   Check script syntax and logs/engine.log for details.\n";
                     engine.Shutdown();
-                    SDL_Quit();
+                    ShutdownSDL();
                     return -1;
                 }
                 std::cout << "✅ Script loaded successfully\n\n";
             } else {
                 std::cerr << "❌ Scripting engine not available\n";
                 engine.Shutdown();
-                SDL_Quit();
+                ShutdownSDL();
                 return -1;
             }
 #else
@@ -416,7 +431,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "   Cannot execute script: " << args.scriptFile << "\n";
             std::cerr << "   Rebuild with -DENABLE_PYTHON=ON\n";
             engine.Shutdown();
-            SDL_Quit();
+            ShutdownSDL();
             return -1;
 #endif
         } else {
@@ -435,7 +450,7 @@ int main(int argc, char* argv[]) {
 
         // Cleanup
         engine.Shutdown();
-        SDL_Quit();
+        ShutdownSDL();
 
         std::cout << "👋 Nexus Engine shutdown complete\n";
 
@@ -445,13 +460,13 @@ int main(int argc, char* argv[]) {
         std::cerr << "\n❌ FATAL ERROR: " << e.what() << "\n";
         std::cerr << "   The application will now exit.\n";
         std::cerr << "   Check logs/engine.log for more details.\n";
-        SDL_Quit();
+        ShutdownSDL();
         return -1;
     } catch (...) {
         std::cerr << "\n❌ UNKNOWN FATAL ERROR occurred!\n";
         std::cerr << "   The application will now exit.\n";
         std::cerr << "   Check logs/engine.log for more details.\n";
-        SDL_Quit();
+        ShutdownSDL();
         return -1;
     }
 }

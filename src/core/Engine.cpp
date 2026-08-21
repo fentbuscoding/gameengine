@@ -15,7 +15,9 @@
 #include "MotionControlSystem.h"
 #include "EngineUI.h"
 #include "EngineErrorRecovery.h"
-#include <windowsx.h>
+#if defined(_WIN32)
+    #include <windowsx.h>   // GET_X_LPARAM and friends; Win32 message crackers only.
+#endif
 #include <chrono>
 #include <stdexcept>
 #include <sstream>
@@ -230,19 +232,18 @@ void Engine::Run() {
         while (isRunning_) {
             timer.Reset();
             
-            MSG msg = {};
-            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-                
-                if (msg.message == WM_QUIT) {
-                    isRunning_ = false;
-                    break;
-                }
+            // Pump the host windowing system. Platform::ProcessMessages owns the
+            // platform-specific details and reports false once the window has
+            // asked the application to close.
+            if (!Platform::ProcessMessages()) {
+                isRunning_ = false;
+                break;
             }
 
-            // Check for ESC key to exit
-            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            // Check for ESC key to exit. Routed through InputManager rather than
+            // GetAsyncKeyState so this honours the engine's own input state -
+            // and so it works off Windows.
+            if (input_ && input_->IsKeyDown(KeyCode::Escape)) {
                 isRunning_ = false;
                 break;
             }
@@ -271,7 +272,7 @@ void Engine::Run() {
             if (targetFPS_ > 0) {
                 float targetFrameTime = 1.0f / targetFPS_;
                 if (frameTime < targetFrameTime) {
-                    Sleep(static_cast<DWORD>((targetFrameTime - frameTime) * 1000.0f));
+                    Platform::Sleep(static_cast<int>((targetFrameTime - frameTime) * 1000.0f));
                 }
             }
         }

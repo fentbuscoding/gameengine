@@ -1,8 +1,11 @@
 #pragma once
 
+// Direct3D 12 ray tracing. Note that <dxr.h> does not exist in the Windows SDK -
+// the DXR interfaces live in d3d12.h - so the include that used to be here broke
+// this header on every platform, Windows included.
 #include <d3d12.h>
-#include <dxr.h>
 #include <DirectXMath.h>
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -10,6 +13,21 @@
 using namespace DirectX;
 
 namespace Nexus {
+
+// Declared in Camera.h and Light.h; only pointers are needed here, so a forward
+// declaration keeps this header from pulling in the whole renderer.
+class Camera;
+class Light;
+
+/// Per-frame ray tracing cost breakdown, in milliseconds unless noted.
+struct RayTracingStats {
+    float accelerationStructureBuildMs = 0.0f;
+    float traceMs = 0.0f;
+    float denoiseMs = 0.0f;
+    uint32_t raysDispatched = 0;
+    uint32_t trianglesInScene = 0;
+    size_t accelerationStructureBytes = 0;
+};
 
 /**
  * Advanced ray tracing engine with real-time reflections, global illumination, and shadows

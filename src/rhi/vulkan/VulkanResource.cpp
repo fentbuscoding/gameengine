@@ -4,6 +4,8 @@
 #include "RHI/Vulkan/VulkanDevice.h"
 #include "Logger.h"
 
+#include <cstring>   // std::memcpy
+
 namespace Nexus {
 namespace RHI {
 

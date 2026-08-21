@@ -7,38 +7,88 @@
 #define NEXUS_VERSION_PATCH @PROJECT_VERSION_PATCH@
 #define NEXUS_VERSION_STRING "@PROJECT_VERSION@"
 
-// Platform detection
+// Platform detection. src/CMakeLists.txt also passes the matching flag on the
+// command line, so these are guarded to avoid a redefinition diagnostic.
 #ifdef _WIN32
+    #ifndef NEXUS_PLATFORM_WINDOWS
     #define NEXUS_PLATFORM_WINDOWS 1
+    #endif
 #elif defined(__linux__)
+    #ifndef NEXUS_PLATFORM_LINUX
     #define NEXUS_PLATFORM_LINUX 1
+    #endif
 #elif defined(__APPLE__)
+    #ifndef NEXUS_PLATFORM_MACOS
     #define NEXUS_PLATFORM_MACOS 1
+    #endif
 #endif
 
 // Feature flags - configured by CMake
+// Each feature flag is also passed on the compiler command line by
+// src/CMakeLists.txt, so the guards below keep an identical definition from
+// being reported as a macro redefinition on every translation unit.
+#ifndef NEXUS_PYTHON_ENABLED
 #cmakedefine NEXUS_PYTHON_ENABLED
+#endif
+#ifndef NEXUS_LUA_ENABLED
 #cmakedefine NEXUS_LUA_ENABLED
+#endif
+#ifndef NEXUS_JOLT_PHYSICS_ENABLED
 #cmakedefine NEXUS_JOLT_PHYSICS_ENABLED
+#endif
+#ifndef NEXUS_PHYSX_ENABLED
 #cmakedefine NEXUS_PHYSX_ENABLED
+#endif
+#ifndef NEXUS_FMOD_ENABLED
 #cmakedefine NEXUS_FMOD_ENABLED
+#endif
+#ifndef NEXUS_ASSIMP_ENABLED
 #cmakedefine NEXUS_ASSIMP_ENABLED
+#endif
+#ifndef NEXUS_IMGUI_ENABLED
 #cmakedefine NEXUS_IMGUI_ENABLED
+#endif
+#ifndef NEXUS_ADVANCED_RENDERING_ENABLED
 #cmakedefine NEXUS_ADVANCED_RENDERING_ENABLED
+#endif
+#ifndef NEXUS_RAY_TRACING_ENABLED
 #cmakedefine NEXUS_RAY_TRACING_ENABLED
+#endif
+#ifndef NEXUS_VR_ENABLED
 #cmakedefine NEXUS_VR_ENABLED
+#endif
+#ifndef NEXUS_NETWORKING_ENABLED
 #cmakedefine NEXUS_NETWORKING_ENABLED
+#endif
+#ifndef NEXUS_C_API_ENABLED
 #cmakedefine NEXUS_C_API_ENABLED
+#endif
+#ifndef NEXUS_GAME_IMPORTERS_ENABLED
 #cmakedefine NEXUS_GAME_IMPORTERS_ENABLED
+#endif
+#ifndef NEXUS_CONSOLE_PLATFORMS_ENABLED
 #cmakedefine NEXUS_CONSOLE_PLATFORMS_ENABLED
+#endif
 
 // Graphics API support
+#ifndef NEXUS_SDL2_ENABLED
 #cmakedefine NEXUS_SDL2_ENABLED
+#endif
+#ifndef NEXUS_VULKAN_ENABLED
 #cmakedefine NEXUS_VULKAN_ENABLED
+#endif
+#ifndef NEXUS_OPENGL_ENABLED
 #cmakedefine NEXUS_OPENGL_ENABLED
+#endif
+#ifndef NEXUS_DIRECTX9_ENABLED
 #cmakedefine NEXUS_DIRECTX9_ENABLED
+#endif
+#ifndef NEXUS_DIRECTX10_ENABLED
 #cmakedefine NEXUS_DIRECTX10_ENABLED
+#endif
+#ifndef NEXUS_DIRECTX11_ENABLED
 #cmakedefine NEXUS_DIRECTX11_ENABLED
+#endif
 
 #define NEXUS_DEFAULT_GRAPHICS_API "@NEXUS_DEFAULT_GRAPHICS_API@"
 

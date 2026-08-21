@@ -1,5 +1,14 @@
 #pragma once
 
+// Bullet Physics is not vendored in this repository (it was removed in favour
+// of Jolt) and there is no build option that provides it, so this header cannot
+// be compiled as-is. The declarations are kept for reference; the guard makes
+// the missing dependency an explicit error instead of a confusing cascade of
+// "btRigidBody does not name a type".
+#ifndef NEXUS_BULLET_PHYSICS_ENABLED
+#error "AdvancedPhysicsEngine.h requires Bullet Physics, which is not vendored in this repository."
+#endif
+
 #include "PhysicsEngine.h"
 #include <btBulletDynamicsCommon.h>
 #include <BulletSoftBody/btSoftRigidDynamicsWorld.h>

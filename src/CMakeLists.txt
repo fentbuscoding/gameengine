@@ -5,16 +5,68 @@ file(GLOB_RECURSE ALL_CPP_FILES CONFIGURE_DEPENDS "*.cpp")
 set(NEXUS_LIB_SOURCES)
 set(NEXUS_EXCLUDED_SOURCES)
 
+# ---------------------------------------------------------------------------
+# Legacy Direct3D 11 / Win32 runtime layer
+#
+# These translation units call Direct3D 11, DirectInput, XAudio2, the Kinect
+# SDK or the Win32 windowing API directly - not merely through a typedef, but
+# as real API calls - so they can only be compiled against the Windows SDK.
+# The engine's headers are portable (see compat/win32), and the newer RHI
+# backends under src/rhi/ are the cross-platform path forward; this list is
+# what is left of the pre-RHI renderer.
+#
+# Everything not listed here builds on every platform, which is what lets the
+# core library and its tests run in CI on Linux.
+# ---------------------------------------------------------------------------
+set(NEXUS_WINDOWS_ONLY_SOURCES
+    core/Engine.cpp                 # Win32 window creation and message loop
+    core/EngineErrorRecovery.cpp    # depends on Engine
+    api/NexusC.cpp                  # C API over Engine
+    graphics/GraphicsDevice.cpp     # Direct3D 11 device and swap chain
+    graphics/Texture.cpp            # Direct3D 11 textures
+    graphics/Shader.cpp             # Direct3D 11 shaders / D3DCompile
+    graphics/Mesh.cpp               # Direct3D 11 vertex and index buffers
+    graphics/TextRenderer.cpp       # Direct3D 11 glyph atlas
+    graphics/LightingEngine.cpp     # Direct3D 11 render targets
+    graphics/AnimationSystem.cpp    # Direct3D 11 skinning buffers
+    utils/ResourceManager.cpp       # creates Direct3D 11 resources
+    input/InputManager.cpp          # DirectInput 8
+    audio/AudioSystem.cpp           # XAudio2 / X3DAudio
+    motion/MotionControlSystem.cpp  # Kinect SDK and XInput
+    ui/EngineUI.cpp                 # ImGui Win32 + DX11 backends
+    ui/EngineUI_Modern.cpp          # ImGui Win32 + DX11 backends
+    ui/GameImporterUI.cpp           # depends on the ImGui UI layer
+)
+
+# Sources that call directly into a graphics API only build where that API's
+# headers and libraries exist. Selecting them here - rather than wrapping each
+# file in a giant #ifdef - keeps the backends readable and makes it obvious
+# which parts of the engine are platform-specific.
 foreach(source_file IN LISTS ALL_CPP_FILES)
     get_filename_component(source_name "${source_file}" NAME)
     get_filename_component(source_dir "${source_file}" DIRECTORY)
+    file(RELATIVE_PATH source_rel "${CMAKE_CURRENT_SOURCE_DIR}" "${source_file}")
     set(exclude_source FALSE)
 
     if(source_name MATCHES "^(main|main_debug|main_simple|texture_test)\\.cpp$")
+        # Entry points are linked into executables, not the core library.
         set(exclude_source TRUE)
     elseif(source_name MATCHES "(_backup|_clean|_fixed|_stub)\\.cpp$")
+        # Superseded variants kept only for reference.
         set(exclude_source TRUE)
     elseif(source_dir STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}/tools")
+        # Tool sources belong to their own executables.
+        set(exclude_source TRUE)
+    elseif(NOT WIN32 AND source_rel MATCHES "^rhi/(d3d9|d3d10|d3d11)/")
+        # Direct3D backends need the Windows SDK.
+        set(exclude_source TRUE)
+    elseif(NOT WIN32 AND source_name MATCHES "_dx(9|10|11)\\.cpp$")
+        set(exclude_source TRUE)
+    elseif(NOT WIN32 AND source_rel IN_LIST NEXUS_WINDOWS_ONLY_SOURCES)
+        set(exclude_source TRUE)
+    elseif(NOT NEXUS_VULKAN_ENABLED AND source_rel MATCHES "^rhi/vulkan/")
+        set(exclude_source TRUE)
+    elseif(NOT NEXUS_OPENGL_ENABLED AND source_rel MATCHES "^rhi/opengl/")
         set(exclude_source TRUE)
     endif()
 
@@ -164,7 +216,14 @@ if(WIN32)
             comctl32.lib kernel32.lib ws2_32.lib setupapi.lib version.lib
     )
 else()
-    message(WARNING "NexusCore currently targets Windows/DirectX. Non-Windows builds may require platform stubs.")
+    target_compile_definitions(NexusCore
+        PUBLIC
+            $<$<PLATFORM_ID:Linux>:NEXUS_PLATFORM_LINUX>
+            $<$<PLATFORM_ID:Darwin>:NEXUS_PLATFORM_MACOS>
+    )
+
+    find_package(Threads REQUIRED)
+    target_link_libraries(NexusCore PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
 endif()
 
 set_target_properties(NexusCore PROPERTIES
@@ -173,13 +232,22 @@ set_target_properties(NexusCore PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
+# The engine executable drives the legacy Direct3D 11 runtime listed above, so
+# it can only be linked where that layer was compiled. Declaring the target
+# anyway would produce a confusing wall of undefined symbols; skipping it with
+# an explicit message keeps the failure legible.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-    add_executable(NexusEngine main.cpp)
-    target_link_libraries(NexusEngine PRIVATE NexusCore)
-    set_target_properties(NexusEngine PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-    message(STATUS "Created NexusEngine executable")
+    if(WIN32)
+        add_executable(NexusEngine main.cpp)
+        target_link_libraries(NexusEngine PRIVATE NexusCore)
+        set_target_properties(NexusEngine PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        )
+        message(STATUS "Created NexusEngine executable")
+    else()
+        message(STATUS "NexusEngine executable skipped: requires the Direct3D 11 runtime layer")
+        message(STATUS "  NexusCore, the tools and the tests still build on this platform")
+    endif()
 endif()
 
 if(NEXUS_BUILD_TOOLS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/asset_converter.cpp")

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <cstring>   // std::memcpy - was relied upon transitively
 #include <iostream>
 
 // Placeholder for STB image - we'll implement basic loading without it for now

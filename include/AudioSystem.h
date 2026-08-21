@@ -9,14 +9,16 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <condition_variable>   // std::condition_variable - was relied upon transitively
 #include <atomic>
 
-#ifdef _WIN32
-    #include <dsound.h>
-    #include <xaudio2.h>
-    #include <x3daudio.h>
-    #include <xapofx.h>
-#endif
+// Resolves to the Windows SDK on Windows and to compat/win32's
+// declaration-only shims elsewhere, so the member declarations below parse on
+// every platform. The XAudio2 backend itself is still Windows-only.
+#include <dsound.h>
+#include <xaudio2.h>
+#include <x3daudio.h>
+#include <xapofx.h>
 
 // Use DirectX 11 by default
 #ifndef NEXUS_USE_DIRECTX11

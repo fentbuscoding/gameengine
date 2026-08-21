@@ -85,9 +85,18 @@ public:
     bool ValidateProjectStructure(const std::string& projectPath, EngineType engineType);
 
     // Main Import Functions
-    ImportResult ImportProject(const std::string& projectPath, const ImportSettings& settings = ImportSettings{});
-    ImportResult ImportAsset(const std::string& assetPath, const ImportSettings& settings = ImportSettings{});
-    ImportResult ImportScene(const std::string& scenePath, EngineType engineType, const ImportSettings& settings = ImportSettings{});
+    // ImportSettings is a nested type whose default member initializers are not
+    // complete until GameImporter itself is complete, so `= ImportSettings{}`
+    // as a default argument is ill-formed (MSVC accepts it; GCC and Clang do
+    // not). Overloads give callers the same convenience portably.
+    ImportResult ImportProject(const std::string& projectPath, const ImportSettings& settings);
+    ImportResult ImportProject(const std::string& projectPath);
+
+    // Declared but not yet implemented - calling either is a link error.
+    // Left in place because they describe the intended API surface; see
+    // src/utils/GameImporter.cpp.
+    ImportResult ImportAsset(const std::string& assetPath, const ImportSettings& settings);
+    ImportResult ImportScene(const std::string& scenePath, EngineType engineType, const ImportSettings& settings);
 
     // Engine-Specific Importers
     ImportResult ImportUnityProject(const std::string& projectPath, const ImportSettings& settings);

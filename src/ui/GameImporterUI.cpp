@@ -1,7 +1,9 @@
 #include "GameImporterUI.h"
 #include "Logger.h"
+#include <cstdio>
 #include <imgui/imgui.h>
 #include <filesystem>
+#include <algorithm>   // std::find - was relied upon transitively
 #include <thread>
 
 namespace fs = std::filesystem;
@@ -84,7 +86,7 @@ void GameImporterUI::DrawProjectSelection() {
     if (ImGui::Button("Browse...")) {
         std::string selectedPath = OpenFolderDialog("Select Game Project Folder");
         if (!selectedPath.empty()) {
-            strncpy_s(pathBuffer_, selectedPath.c_str(), sizeof(pathBuffer_) - 1);
+            std::snprintf(pathBuffer_, sizeof(pathBuffer_), "%s", selectedPath.c_str());
             wizardState_.projectPath = selectedPath;
             RefreshProjectInfo();
         }
@@ -96,7 +98,7 @@ void GameImporterUI::DrawProjectSelection() {
         ImGui::Text("Recent Projects:");
         for (size_t i = 0; i < recentProjects_.size() && i < 5; ++i) {
             if (ImGui::Selectable(recentProjects_[i].c_str())) {
-                strncpy_s(pathBuffer_, recentProjects_[i].c_str(), sizeof(pathBuffer_) - 1);
+                std::snprintf(pathBuffer_, sizeof(pathBuffer_), "%s", recentProjects_[i].c_str());
                 wizardState_.projectPath = recentProjects_[i];
                 RefreshProjectInfo();
             }
@@ -146,7 +148,7 @@ void GameImporterUI::DrawImportSettings() {
     // Output directory
     ImGui::Text("Output Directory:");
     static char outputBuffer[256];
-    strncpy_s(outputBuffer, wizardState_.settings.outputDirectory.c_str(), sizeof(outputBuffer) - 1);
+    std::snprintf(outputBuffer, sizeof(outputBuffer), "%s", wizardState_.settings.outputDirectory.c_str());
     if (ImGui::InputText("##OutputDir", outputBuffer, sizeof(outputBuffer))) {
         wizardState_.settings.outputDirectory = outputBuffer;
     }

@@ -1,10 +1,13 @@
 #pragma once
 
+// See RayTracingEngine.h: <dxr.h> is not a real Windows SDK header.
 #include <d3d11.h>
 #include <d3d12.h>
-#include <dxr.h>
 #include <DirectXMath.h>
+#include <cstdint>
 #include <memory>
+#include <string>     // std::string members below
+#include <atomic>     // std::atomic members below
 #include <vector>
 #include <unordered_map>
 #include <thread>
@@ -76,7 +79,10 @@ public:
     void Shutdown();
 
     // Texture Management
-    uint32_t LoadTexture(const std::string& filePath, const TextureDesc& desc = TextureDesc{});
+    // TextureDesc is a nested type, so `= TextureDesc{}` as a default argument
+    // is ill-formed here; overloads are the portable equivalent.
+    uint32_t LoadTexture(const std::string& filePath, const TextureDesc& desc);
+    uint32_t LoadTexture(const std::string& filePath);
     void UnloadTexture(uint32_t textureId);
     ID3D11ShaderResourceView* GetTextureSRV(uint32_t textureId);
     bool IsTextureResident(uint32_t textureId, int mipLevel = 0);
@@ -114,6 +120,17 @@ public:
 
     // Debug
     void EnableDebugOverlay(bool enable) { debugOverlayEnabled_ = enable; }
+    /// Per-texture streaming state, for the debug overlay.
+    struct TextureDebugInfo {
+        std::string filePath;
+        uint32_t textureId = 0;
+        uint32_t residentMipLevel = 0;
+        uint32_t totalMipLevels = 0;
+        size_t residentBytes = 0;
+        float lastAccessTime = 0.0f;
+        bool streamingInProgress = false;
+    };
+
     std::vector<TextureDebugInfo> GetDebugInfo();
 
 private:
@@ -194,111 +211,10 @@ private:
     float mipBias_;
 };
 
-/**
- * Ray Tracing Engine for NVIDIA RTX support
- */
-class RayTracingEngine {
-public:
-    enum class RayTracingAPI {
-        DXR,        // DirectX Raytracing
-        Vulkan,     // Vulkan RT
-        OptiX,      // NVIDIA OptiX
-        Software    // Software fallback
-    };
-
-    struct RayTracingSettings {
-        RayTracingAPI api = RayTracingAPI::DXR;
-        bool enableGlobalIllumination = true;
-        bool enableReflections = true;
-        bool enableShadows = true;
-        bool enableAmbientOcclusion = true;
-        int maxRayDepth = 4;
-        int samplesPerPixel = 1;
-        float rayTMax = 1000.0f;
-        bool enableDenoising = true;
-        bool enableTemporalAccumulation = true;
-        bool enableAdaptiveSampling = true;
-        float adaptiveThreshold = 0.1f;
-    };
-
-public:
-    RayTracingEngine();
-    ~RayTracingEngine();
-
-    // Initialization
-    bool Initialize(ID3D12Device5* device, const RayTracingSettings& settings = RayTracingSettings{});
-    void Shutdown();
-
-    // Scene Management
-    void BuildAccelerationStructures();
-    void UpdateAccelerationStructures();
-    uint32_t AddMeshToScene(const std::vector<XMFLOAT3>& vertices, 
-                           const std::vector<uint32_t>& indices);
-    void RemoveMeshFromScene(uint32_t meshId);
-
-    // Ray Tracing Passes
-    void RenderGlobalIllumination(ID3D12GraphicsCommandList4* cmdList);
-    void RenderReflections(ID3D12GraphicsCommandList4* cmdList);
-    void RenderShadows(ID3D12GraphicsCommandList4* cmdList);
-    void RenderAmbientOcclusion(ID3D12GraphicsCommandList4* cmdList);
-
-    // Denoising
-    void ApplyDenoising(ID3D12Resource* inputTexture, ID3D12Resource* outputTexture);
-    void SetDenoisingStrength(float strength);
-
-    // Settings
-    void SetSettings(const RayTracingSettings& settings) { settings_ = settings; }
-    const RayTracingSettings& GetSettings() const { return settings_; }
-
-    // Performance
-    RayTracingStats GetPerformanceStats() const { return stats_; }
-    void SetLODEnabled(bool enabled) { lodEnabled_ = enabled; }
-
-private:
-    // DXR implementation
-    bool InitializeDXR();
-    void CreateRayTracingPipeline();
-    void CreateShaderTables();
-
-    // Acceleration structures
-    void CreateBottomLevelAS();
-    void CreateTopLevelAS();
-    void UpdateTopLevelAS();
-
-    // Shaders
-    void LoadRayTracingShaders();
-    void CreateRootSignature();
-
-    ID3D12Device5* device_;
-    ID3D12GraphicsCommandList4* commandList_;
-    RayTracingSettings settings_;
-    
-    // Pipeline state
-    ID3D12StateObject* rtPipelineState_;
-    ID3D12RootSignature* globalRootSignature_;
-    ID3D12RootSignature* localRootSignature_;
-    
-    // Acceleration structures
-    ID3D12Resource* bottomLevelAS_;
-    ID3D12Resource* topLevelAS_;
-    std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instances_;
-    
-    // Shader tables
-    ID3D12Resource* rayGenShaderTable_;
-    ID3D12Resource* missShaderTable_;
-    ID3D12Resource* hitGroupShaderTable_;
-    
-    // Scene data
-    std::vector<uint32_t> meshIds_;
-    uint32_t nextMeshId_;
-    
-    // Denoising
-    void* denoiser_; // OptiX denoiser or similar
-    bool denoisingEnabled_;
-    
-    // Performance tracking
-    RayTracingStats stats_;
-    bool lodEnabled_;
-};
+// A second, divergent definition of Nexus::RayTracingEngine used to live here,
+// alongside the one in RayTracingEngine.h. Two different definitions of the
+// same class in one program is an ODR violation - which member layout you got
+// would depend on include order. The canonical definition is in
+// RayTracingEngine.h; include that header instead.
 
 } // namespace Nexus

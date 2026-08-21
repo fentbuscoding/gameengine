@@ -73,6 +73,10 @@ bool GameImporter::ValidateProjectStructure(const std::string& projectPath, Engi
     }
 }
 
+GameImporter::ImportResult GameImporter::ImportProject(const std::string& projectPath) {
+    return ImportProject(projectPath, ImportSettings{});
+}
+
 GameImporter::ImportResult GameImporter::ImportProject(const std::string& projectPath, const ImportSettings& settings) {
     auto startTime = std::chrono::high_resolution_clock::now();
     ImportResult result;

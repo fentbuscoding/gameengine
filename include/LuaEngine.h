@@ -6,6 +6,11 @@ extern "C" {
     #include <lauxlib.h>
     #include <lualib.h>
 }
+#else
+// lua_State appears in the declarations below regardless of whether Lua is
+// compiled in, so it needs to name something. Forward-declaring it keeps the
+// header parseable without Lua; the members are only usable when Lua is enabled.
+struct lua_State;
 #endif
 
 #include <memory>
@@ -44,7 +49,9 @@ public:
     Engine* GetEngine() const { return engine_; }
 
     // Lua state access
+#ifdef NEXUS_LUA_ENABLED
     lua_State* GetLuaState() const { return luaState_; }
+#endif
 
     // Variable get/set
     template<typename T>

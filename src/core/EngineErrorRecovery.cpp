@@ -391,15 +391,13 @@ void EngineErrorRecovery::CheckForCommonIssues() {
         ReportError("Graphics", "Device lost detected", ErrorSeverity::Error, "Reset graphics device");
     }
     
-    // Check for low memory
-    MEMORYSTATUSEX memStatus;
-    memStatus.dwLength = sizeof(memStatus);
-    if (GlobalMemoryStatusEx(&memStatus)) {
-        DWORD memoryUsagePercent = memStatus.dwMemoryLoad;
-        if (memoryUsagePercent > 90) {
-            ReportError("Memory", "High memory usage: " + std::to_string(memoryUsagePercent) + "%", 
-                       ErrorSeverity::Warning, "Consider reducing memory usage");
-        }
+    // Check for low memory. Platform::GetSystemMemoryUsagePercent hides the
+    // per-OS query and returns -1 when it cannot be determined, which must not
+    // be mistaken for "0% used".
+    const int memoryUsagePercent = Platform::GetSystemMemoryUsagePercent();
+    if (memoryUsagePercent > 90) {
+        ReportError("Memory", "High memory usage: " + std::to_string(memoryUsagePercent) + "%",
+                   ErrorSeverity::Warning, "Consider reducing memory usage");
     }
 }
 

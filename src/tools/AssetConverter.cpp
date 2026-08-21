@@ -1,4 +1,5 @@
 #include "AssetConverter.h"
+#include "TextBlockParser.h"
 #include "Logger.h"
 #include <filesystem>
 #include <fstream>
@@ -238,34 +239,24 @@ bool AssetConverter::ConvertVMF(const std::string& inputPath, const std::string&
         outFile << "NexusScene {\n";
         
         // Extract and convert world geometry
-        std::regex worldRegex(R"(world\s*\{(.*?)\})", std::regex::multiline | std::regex::dotall);
-        std::smatch worldMatch;
-        if (std::regex_search(content, worldMatch, worldRegex) && worldMatch.size() > 1) {
+        const std::vector<std::string> worldBlocks = ExtractBracedBlocks(content, "world");
+        if (!worldBlocks.empty()) {
             outFile << "  World {\n";
             
             // Extract brushes/solids
-            std::string worldContent = worldMatch[1].str();
-            std::regex solidRegex(R"(solid\s*\{(.*?)\})", std::regex::multiline | std::regex::dotall);
-            std::smatch solidMatch;
-            std::string::const_iterator searchStart(worldContent.cbegin());
+            const std::string& worldContent = worldBlocks.front();
             
             int brushCount = 0;
-            while (std::regex_search(searchStart, worldContent.cend(), solidMatch, solidRegex)) {
+            for (const std::string& solidContent : ExtractBracedBlocks(worldContent, "solid")) {
                 brushCount++;
-                std::string solidContent = solidMatch[1].str();
                 
                 outFile << "    Brush {\n";
                 outFile << "      id: " << brushCount << "\n";
                 
                 // Extract faces/sides
-                std::regex sideRegex(R"(side\s*\{(.*?)\})", std::regex::multiline | std::regex::dotall);
-                std::smatch sideMatch;
-                std::string::const_iterator sideSearchStart(solidContent.cbegin());
-                
                 int faceCount = 0;
-                while (std::regex_search(sideSearchStart, solidContent.cend(), sideMatch, sideRegex)) {
+                for (const std::string& sideContent : ExtractBracedBlocks(solidContent, "side")) {
                     faceCount++;
-                    std::string sideContent = sideMatch[1].str();
                     
                     outFile << "      Face {\n";
                     outFile << "        id: " << faceCount << "\n";
@@ -287,25 +278,18 @@ bool AssetConverter::ConvertVMF(const std::string& inputPath, const std::string&
                     }
                     
                     outFile << "      }\n";
-                    sideSearchStart = sideMatch.suffix().first;
                 }
                 
                 outFile << "    }\n";
-                searchStart = solidMatch.suffix().first;
             }
             
             outFile << "  }\n";
         }
         
         // Extract and convert entities
-        std::regex entityRegex(R"(entity\s*\{(.*?)\})", std::regex::multiline | std::regex::dotall);
-        std::smatch entityMatch;
-        std::string::const_iterator entSearchStart(content.cbegin());
-        
         int entityCount = 0;
-        while (std::regex_search(entSearchStart, content.cend(), entityMatch, entityRegex)) {
+        for (const std::string& entityContent : ExtractBracedBlocks(content, "entity")) {
             entityCount++;
-            std::string entityContent = entityMatch[1].str();
             
             // Extract entity class/type
             std::regex classNameRegex(R"(classname\s*\"(.*?)\")", std::regex::multiline);
@@ -355,7 +339,6 @@ bool AssetConverter::ConvertVMF(const std::string& inputPath, const std::string&
             }
             
             outFile << "  }\n";
-            entSearchStart = entityMatch.suffix().first;
         }
         
         outFile << "}\n";

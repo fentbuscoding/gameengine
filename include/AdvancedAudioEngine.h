@@ -292,7 +292,13 @@ public:
     ~AdvancedAudioEngine();
 
     // Initialization
-    bool Initialize(const AudioSettings& settings = AudioSettings{});
+    //
+    // AudioSettings is a nested type, so its default member initializers are not
+    // complete until AdvancedAudioEngine is, which makes `= AudioSettings{}` as
+    // a default argument ill-formed (MSVC accepts it; GCC and Clang do not).
+    // Overloads give callers the same convenience portably.
+    bool Initialize(const AudioSettings& settings);
+    bool Initialize();
     void Shutdown();
     void Reset();
 

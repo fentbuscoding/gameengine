@@ -45,6 +45,23 @@ set_property(CACHE NEXUS_DEFAULT_GRAPHICS_API PROPERTY STRINGS "Vulkan" "OpenGL"
 
 set(NEXUS_THIRD_PARTY_INCLUDE_DIRS)
 
+# ---------------------------------------------------------------------------
+# Win32/DirectX compatibility shims
+#
+# The engine's headers are written against DirectXMath and a handful of Win32
+# typedefs. On non-Windows platforms those headers do not exist, which made the
+# whole codebase unbuildable rather than merely missing a renderer. compat/win32
+# supplies a portable DirectXMath implementation plus declaration-only stand-ins
+# for the DirectX headers, so shared engine code compiles everywhere while real
+# Direct3D work stays confined to the Windows-only backends.
+#
+# Windows builds never see this directory and keep using the Windows SDK.
+# ---------------------------------------------------------------------------
+if(NOT WIN32)
+    list(APPEND NEXUS_THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/compat/win32")
+    message(STATUS "Using portable Win32/DirectXMath compatibility shims from compat/win32")
+endif()
+
 if(EXISTS "${THIRD_PARTY_DIR}/stb")
     list(APPEND NEXUS_THIRD_PARTY_INCLUDE_DIRS "${THIRD_PARTY_DIR}/stb")
 endif()
@@ -456,9 +473,17 @@ set(NEXUS_GAME_IMPORTERS_ENABLED ${ENABLE_GAME_IMPORTERS})
 set(NEXUS_CONSOLE_PLATFORMS_ENABLED ${ENABLE_CONSOLE_PLATFORMS})
 
 set(NEXUS_SDL2_ENABLED ${SDL2_FOUND})
+# The Vulkan backend creates its surface and queries its instance extensions
+# through SDL2 (see src/rhi/vulkan/VulkanDevice.cpp), so Vulkan headers alone are
+# not enough to build it. Checking that here turns a wall of compile errors into
+# one actionable message.
 set(NEXUS_VULKAN_ENABLED FALSE)
 if(ENABLE_VULKAN AND VULKAN_FOUND)
-    set(NEXUS_VULKAN_ENABLED TRUE)
+    if(SDL2_FOUND)
+        set(NEXUS_VULKAN_ENABLED TRUE)
+    else()
+        message(WARNING "Vulkan found but SDL2 is missing - the Vulkan backend needs SDL2 for surface creation. Install SDL2 development headers to enable it.")
+    endif()
 endif()
 
 set(NEXUS_OPENGL_ENABLED FALSE)
@@ -493,6 +518,21 @@ else()
 endif()
 
 add_subdirectory(src)
+
+# ---------------------------------------------------------------------------
+# Tests
+#
+# On by default: the suite links only the portable core, so it costs little and
+# is the only thing standing between the cross-platform build and silent
+# regression. Run with `ctest --test-dir <build> --output-on-failure`.
+# ---------------------------------------------------------------------------
+option(NEXUS_BUILD_TESTS "Build the Nexus test suite" ON)
+
+if(NEXUS_BUILD_TESTS AND EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    enable_testing()
+    add_subdirectory(tests)
+    message(STATUS "Tests enabled - run: ctest --test-dir ${CMAKE_BINARY_DIR} --output-on-failure")
+endif()
 
 if(ENABLE_EXAMPLES AND EXISTS "${CMAKE_SOURCE_DIR}/examples/CMakeLists.txt")
     add_subdirectory(examples)

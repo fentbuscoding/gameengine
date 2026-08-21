@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Version](https://img.shields.io/badge/version-1.0--alpha-orange.svg)]()
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
 **Nexus** is a production-ready game engine designed for indie developers and studios who need professional-grade tools without the overhead of enterprise engines. Built with modern C++17/20, Nexus combines cutting-edge graphics technology with an intuitive API and flexible scripting support.
 
@@ -37,7 +37,7 @@
 - **Multiple Options** - Choose the right tool for each task
 
 ### 🎯 Realistic Physics
-- **Bullet Physics** - Industry-standard physics simulation
+- **Jolt Physics** - Industry-standard physics simulation
 - **PhysX Support** - Optional NVIDIA PhysX integration
 - **Soft Bodies** - Cloth and deformable objects
 - **Ragdoll Physics** - Character physics simulation
@@ -83,11 +83,23 @@
 
 ### Prerequisites
 
+**Windows** (full engine, including the Direct3D 11 renderer)
+
 - **Windows 10/11** (64-bit)
 - **Visual Studio 2022** with C++ Desktop Development
 - **CMake 3.16+**
 - **Windows SDK 10.0.26100.0+**
 - **Python 3.9+** (optional, for scripting)
+
+**Linux / macOS** (core library, tools and tests)
+
+- A C++17 compiler (GCC 9+, Clang 10+)
+- **CMake 3.16+**
+- `libsdl2-dev` and `libvulkan-dev` for the Vulkan backend (optional)
+
+Every third-party dependency is optional — a missing one disables its feature
+with a message rather than failing the build. See
+**[docs/PORTABILITY.md](docs/PORTABILITY.md)** for what builds where and why.
 
 ### Installation
 
@@ -104,12 +116,25 @@ setup_dependencies.bat
 ```
 
 3. **Build the engine**
+
+On Windows:
 ```bash
 cd ../build
 build.bat
 ```
 
-4. **Run examples**
+On any platform, with CMake directly:
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+4. **Run the tests**
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+5. **Run examples**
 ```bash
 cd ../../examples
 # Examples coming soon
@@ -224,6 +249,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **[Development Roadmap](docs/ROADMAP.md)** - Feature timeline and future plans
 - **[Contributing Guide](docs/CONTRIBUTING.md)** - How to contribute to the project
 - **[Requirements](REQUIREMENTS.md)** - System requirements and dependencies
+- **[Portability](docs/PORTABILITY.md)** - Platform support and the Win32/DirectXMath compatibility layer
 - **[API Documentation]()** - Complete API reference (coming soon)
 
 ## 🎓 Learning Resources
@@ -260,7 +286,7 @@ Interested in supporting Nexus Engine? We're seeking funding to accelerate devel
 
 - **Lines of Code**: 50,000+
 - **Dependencies**: 10+ integrated libraries
-- **Platforms**: Windows (more coming)
+- **Platforms**: Windows (full engine); Linux and macOS (core library, tools and tests)
 - **Community**: Growing active developer base
 - **Development**: Active since 2026
 
@@ -305,7 +331,7 @@ A: Yes! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 Nexus Engine is built on the shoulders of giants. Special thanks to:
 
-- **Bullet Physics** - Physics simulation
+- **Jolt Physics** - Physics simulation
 - **ImGui** - Development UI
 - **DirectX** - Graphics API
 - **Python & Lua** - Scripting languages
