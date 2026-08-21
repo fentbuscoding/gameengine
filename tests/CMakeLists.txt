@@ -46,10 +46,14 @@ nexus_add_test(NexusMathTests MathTests.cpp)
 # Parser tests cover the header-only Valve block extractor.
 nexus_add_test(NexusParserTests ParserTests.cpp)
 
-# Core tests need the platform layer and timer implementations.
+# Core tests need the platform layer and timer implementations. Window.cpp comes
+# along because Platform's window functions now delegate to it; the test target
+# does not define NEXUS_SDL2_ENABLED, so it compiles the no-backend branch and
+# the tests stay free of any SDL dependency.
 nexus_add_test(NexusCoreTests
     CoreTests.cpp
     ${CMAKE_SOURCE_DIR}/src/platform/Platform.cpp
+    ${CMAKE_SOURCE_DIR}/src/platform/Window.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/Timer.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/Logger.cpp
 )

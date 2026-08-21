@@ -133,9 +133,10 @@ if(TARGET NexusImGui)
     target_link_libraries(NexusCore PUBLIC NexusImGui)
 endif()
 
-if(SDL2_FOUND)
-    target_include_directories(NexusCore PUBLIC ${SDL2_INCLUDE_DIR})
-    target_link_libraries(NexusCore PUBLIC ${SDL2_LIBRARIES})
+# NexusSDL2 is the normalised interface target the root CMakeLists builds from
+# whichever discovery mechanism succeeded; see the SDL2 block there.
+if(TARGET NexusSDL2)
+    target_link_libraries(NexusCore PUBLIC NexusSDL2)
 endif()
 
 if(NEXUS_VULKAN_ENABLED)
@@ -248,6 +249,27 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
         message(STATUS "NexusEngine executable skipped: requires the Direct3D 11 runtime layer")
         message(STATUS "  NexusCore, the tools and the tests still build on this platform")
     endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Cross-platform demo
+#
+# The NexusEngine executable above needs the Direct3D 11 runtime layer and so
+# exists only on Windows. This is the runnable target everywhere else: it opens
+# a window through Nexus::Window and drives an RHI device on it, which is the
+# whole cross-platform path in one program. It needs a window, so it is built
+# only where SDL2 was found and at least one portable backend is enabled.
+# ---------------------------------------------------------------------------
+if(NEXUS_SDL2_ENABLED AND (NEXUS_VULKAN_ENABLED OR NEXUS_OPENGL_ENABLED OR NEXUS_DIRECTX11_ENABLED)
+   AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rhi_demo.cpp")
+    add_executable(NexusRHIDemo tools/rhi_demo.cpp)
+    target_link_libraries(NexusRHIDemo PRIVATE NexusCore)
+    set_target_properties(NexusRHIDemo PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+    message(STATUS "Created NexusRHIDemo (cross-platform window + RHI sample)")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rhi_demo.cpp")
+    message(STATUS "NexusRHIDemo skipped: needs SDL2 and one of Vulkan/OpenGL/DirectX 11")
 endif()
 
 if(NEXUS_BUILD_TOOLS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/asset_converter.cpp")

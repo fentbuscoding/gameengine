@@ -93,10 +93,22 @@
 #define NEXUS_DEFAULT_GRAPHICS_API "@NEXUS_DEFAULT_GRAPHICS_API@"
 
 // Debug features
-#ifdef _DEBUG
-    #define NEXUS_DEBUG 1
-    #define NEXUS_ENABLE_PROFILING 1
-    #define NEXUS_MEMORY_DEBUGGING 1
+//
+// _DEBUG is an MSVC invention; GCC and Clang define nothing in a debug build and
+// instead leave NDEBUG *un*defined in one. Keying off _DEBUG alone meant
+// NEXUS_DEBUG was never set outside MSVC, so every debug-only path - Vulkan
+// validation layers included - was compiled out of Linux and macOS builds
+// no matter how CMAKE_BUILD_TYPE was set.
+#if defined(_DEBUG) || !defined(NDEBUG)
+    #ifndef NEXUS_DEBUG
+        #define NEXUS_DEBUG 1
+    #endif
+    #ifndef NEXUS_ENABLE_PROFILING
+        #define NEXUS_ENABLE_PROFILING 1
+    #endif
+    #ifndef NEXUS_MEMORY_DEBUGGING
+        #define NEXUS_MEMORY_DEBUGGING 1
+    #endif
 #endif
 
 // API export/import macros

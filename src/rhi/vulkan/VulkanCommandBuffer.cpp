@@ -99,7 +99,69 @@ void VulkanCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instanceCoun
 }
 
 void VulkanCommandBuffer::ClearRenderTarget(RHITexture* target, const ClearColor& color) {
-    Logger::Warning("VulkanCommandBuffer::ClearRenderTarget not yet implemented");
+    VulkanTexture* texture = static_cast<VulkanTexture*>(target);
+    if (!texture || texture->GetVkImage() == VK_NULL_HANDLE) {
+        Logger::Error("ClearRenderTarget called with no render target");
+        return;
+    }
+
+    VkImageSubresourceRange range{};
+    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    range.baseMipLevel = 0;
+    range.levelCount = VK_REMAINING_MIP_LEVELS;
+    range.baseArrayLayer = 0;
+    range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image = texture->GetVkImage();
+    barrier.subresourceRange = range;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+    // UNDEFINED as the old layout discards whatever the image held, which is
+    // exactly right for a clear and avoids having to track per-image layout
+    // state that this command buffer does not have.
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer_,
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    VkClearColorValue clearValue{};
+    clearValue.float32[0] = color.r;
+    clearValue.float32[1] = color.g;
+    clearValue.float32[2] = color.b;
+    clearValue.float32[3] = color.a;
+
+    vkCmdClearColorImage(commandBuffer_, texture->GetVkImage(),
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
+
+    // A swap chain image must be in PRESENT_SRC_KHR when it reaches
+    // vkQueuePresentKHR; anything else is left ready to be used as a colour
+    // attachment by subsequent draws.
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    if (texture->IsSwapChainImage()) {
+        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.dstAccessMask = 0;
+        vkCmdPipelineBarrier(commandBuffer_,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &barrier);
+    } else {
+        barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        vkCmdPipelineBarrier(commandBuffer_,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &barrier);
+    }
 }
 
 void VulkanCommandBuffer::ClearDepthStencil(RHITexture* target, float depth, uint8_t stencil) {

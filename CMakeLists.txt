@@ -164,6 +164,17 @@ if(ENABLE_JOLT_PHYSICS)
     endif()
 endif()
 
+# ---------------------------------------------------------------------------
+# SDL2 - windowing, input and Vulkan surface creation
+#
+# Three ways to find it, in order of specificity: a vendored copy under
+# thirdparty/, SDL2's own CMake package config, then pkg-config. The result is
+# normalised into one interface target, NexusSDL2, because the three mechanisms
+# disagree about what they set - the package config exports SDL2_INCLUDE_DIRS
+# (plural, containing both <prefix>/include and <prefix>/include/SDL2) while
+# Homebrew's exports only the SDL2 subdirectory. Consuming the singular variable,
+# as this used to, silently dropped the include path on macOS.
+# ---------------------------------------------------------------------------
 set(SDL2_SEARCH_PATHS
     "${THIRD_PARTY_DIR}/SDL2"
     "${CMAKE_SOURCE_DIR}/third_party/SDL2"
@@ -172,9 +183,11 @@ set(SDL2_SEARCH_PATHS
 )
 
 set(SDL2_FOUND FALSE)
+set(NEXUS_SDL2_INCLUDE_DIRS)
+set(NEXUS_SDL2_LINK_LIBRARIES)
+
 foreach(search_path IN LISTS SDL2_SEARCH_PATHS)
     if(search_path AND EXISTS "${search_path}/include/SDL.h")
-        set(SDL2_INCLUDE_DIR "${search_path}/include")
         if(WIN32)
             find_library(SDL2_LIBRARY
                 NAMES SDL2
@@ -195,61 +208,159 @@ foreach(search_path IN LISTS SDL2_SEARCH_PATHS)
         endif()
         if(SDL2_LIBRARY)
             set(SDL2_FOUND TRUE)
-            set(SDL2_LIBRARIES ${SDL2_LIBRARY})
-            if(WIN32 AND SDL2MAIN_LIBRARY)
-                list(APPEND SDL2_LIBRARIES ${SDL2MAIN_LIBRARY})
+            # Both the prefix and its SDL2/ subdirectory, so <SDL.h> and
+            # <SDL2/SDL.h> each resolve regardless of how the source spells it.
+            set(NEXUS_SDL2_INCLUDE_DIRS "${search_path}/include")
+            if(EXISTS "${search_path}/include/SDL2/SDL.h")
+                list(APPEND NEXUS_SDL2_INCLUDE_DIRS "${search_path}/include/SDL2")
             endif()
-            message(STATUS "Found SDL2 at: ${search_path}")
-            message(STATUS "  SDL2 include: ${SDL2_INCLUDE_DIR}")
-            message(STATUS "  SDL2 libraries: ${SDL2_LIBRARIES}")
+            set(NEXUS_SDL2_LINK_LIBRARIES ${SDL2_LIBRARY})
+            if(WIN32 AND SDL2MAIN_LIBRARY)
+                list(APPEND NEXUS_SDL2_LINK_LIBRARIES ${SDL2MAIN_LIBRARY})
+            endif()
+            message(STATUS "Found vendored SDL2 at: ${search_path}")
             break()
         endif()
     endif()
 endforeach()
 
 if(NOT SDL2_FOUND)
+    # Homebrew installs outside CMake's default prefixes on Apple Silicon, where
+    # /opt/homebrew is not searched unless it is on CMAKE_PREFIX_PATH.
+    if(APPLE)
+        find_program(NEXUS_BREW_EXECUTABLE brew)
+        if(NEXUS_BREW_EXECUTABLE)
+            execute_process(
+                COMMAND "${NEXUS_BREW_EXECUTABLE}" --prefix
+                OUTPUT_VARIABLE NEXUS_BREW_PREFIX
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(NEXUS_BREW_PREFIX)
+                list(APPEND CMAKE_PREFIX_PATH "${NEXUS_BREW_PREFIX}")
+                message(STATUS "Added Homebrew prefix to search path: ${NEXUS_BREW_PREFIX}")
+            endif()
+        endif()
+    endif()
+
     find_package(SDL2 QUIET)
     if(SDL2_FOUND)
-        message(STATUS "Found SDL2 via system package manager")
+        # SDL2_INCLUDE_DIRS when the config provides it, SDL2_INCLUDE_DIR
+        # otherwise; the FindSDL2 module shipped by some distributions sets only
+        # the latter.
+        if(SDL2_INCLUDE_DIRS)
+            set(NEXUS_SDL2_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
+        elseif(SDL2_INCLUDE_DIR)
+            set(NEXUS_SDL2_INCLUDE_DIRS ${SDL2_INCLUDE_DIR})
+        endif()
+
+        if(TARGET SDL2::SDL2)
+            set(NEXUS_SDL2_LINK_LIBRARIES SDL2::SDL2)
+        elseif(SDL2_LIBRARIES)
+            set(NEXUS_SDL2_LINK_LIBRARIES ${SDL2_LIBRARIES})
+        endif()
+        message(STATUS "Found SDL2 via its CMake package config")
     endif()
 endif()
 
 if(NOT SDL2_FOUND)
-    message(WARNING "SDL2 not found - windowing will be limited to platform-specific code")
-    message(WARNING "Run setup_dependencies.bat (Windows) or setup_dependencies.sh (Linux/macOS)")
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(PC_SDL2 QUIET sdl2)
+        if(PC_SDL2_FOUND)
+            set(SDL2_FOUND TRUE)
+            set(NEXUS_SDL2_INCLUDE_DIRS ${PC_SDL2_INCLUDE_DIRS})
+            set(NEXUS_SDL2_LINK_LIBRARIES ${PC_SDL2_LINK_LIBRARIES})
+            message(STATUS "Found SDL2 via pkg-config (${PC_SDL2_VERSION})")
+        endif()
+    endif()
 endif()
 
+if(SDL2_FOUND AND NOT NEXUS_SDL2_LINK_LIBRARIES)
+    # Headers with no library is not a usable SDL2: it links on a static
+    # library (nothing is resolved until an executable is produced) and then
+    # fails at the first executable. Better to reject it here.
+    message(WARNING "SDL2 headers were found but no SDL2 library was - treating SDL2 as unavailable")
+    set(SDL2_FOUND FALSE)
+endif()
+
+if(SDL2_FOUND)
+    add_library(NexusSDL2 INTERFACE)
+    if(NEXUS_SDL2_INCLUDE_DIRS)
+        target_include_directories(NexusSDL2 INTERFACE ${NEXUS_SDL2_INCLUDE_DIRS})
+    endif()
+    target_link_libraries(NexusSDL2 INTERFACE ${NEXUS_SDL2_LINK_LIBRARIES})
+    message(STATUS "  SDL2 include: ${NEXUS_SDL2_INCLUDE_DIRS}")
+    message(STATUS "  SDL2 libraries: ${NEXUS_SDL2_LINK_LIBRARIES}")
+else()
+    message(WARNING "SDL2 not found - no windowing backend, and the Vulkan backend cannot be built")
+    if(WIN32)
+        message(WARNING "  Run setup_dependencies.bat, or install SDL2 development libraries")
+    elseif(APPLE)
+        message(WARNING "  brew install sdl2")
+    else()
+        message(WARNING "  apt install libsdl2-dev (or your distribution's equivalent)")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Vulkan
+#
+# On macOS there is no native Vulkan driver: MoltenVK translates to Metal, and
+# the Vulkan loader finds it through an ICD manifest. Headers alone are enough
+# to compile but not to run, so the configuration reports which of the two is
+# missing rather than leaving it to fail at vkCreateInstance.
+# ---------------------------------------------------------------------------
 if(ENABLE_VULKAN)
-    # Check thirdparty folder first
     set(VULKAN_SEARCH_PATHS
         "${THIRD_PARTY_DIR}/vulkan"
         "${CMAKE_SOURCE_DIR}/third_party/vulkan"
+        "$ENV{VULKAN_SDK}"
     )
 
     set(VULKAN_FOUND FALSE)
     foreach(search_path IN LISTS VULKAN_SEARCH_PATHS)
-        if(EXISTS "${search_path}/include/vulkan/vulkan.h")
+        if(search_path AND EXISTS "${search_path}/include/vulkan/vulkan.h")
             set(Vulkan_INCLUDE_DIRS "${search_path}/include")
             set(VULKAN_FOUND TRUE)
             message(STATUS "Found Vulkan headers at: ${search_path}")
-            message(STATUS "  Note: Using headers only. Install full Vulkan SDK for validation layers and tools.")
+            message(STATUS "  Note: Using headers only. Install the full Vulkan SDK for validation layers and tools.")
             break()
         endif()
     endforeach()
 
-    # Try system Vulkan SDK if not found in thirdparty
     if(NOT VULKAN_FOUND)
         find_package(Vulkan QUIET)
         if(Vulkan_FOUND)
-            message(STATUS "Found Vulkan SDK: ${Vulkan_INCLUDE_DIRS}")
+            message(STATUS "Found Vulkan: ${Vulkan_INCLUDE_DIRS}")
             set(VULKAN_FOUND TRUE)
         endif()
     endif()
 
     if(NOT VULKAN_FOUND)
         message(STATUS "Vulkan not found - Vulkan backend disabled")
-        message(STATUS "  Run setup_dependencies.bat/sh or install Vulkan SDK from https://vulkan.lunarg.com/")
+        if(APPLE)
+            message(STATUS "  brew install molten-vk vulkan-headers vulkan-loader")
+            message(STATUS "  or install the LunarG SDK from https://vulkan.lunarg.com/")
+        else()
+            message(STATUS "  Install the Vulkan SDK from https://vulkan.lunarg.com/, or your distribution's libvulkan-dev")
+        endif()
         set(ENABLE_VULKAN OFF)
+    elseif(APPLE)
+        # A Mac with headers but no MoltenVK ICD compiles the backend and then
+        # finds zero physical devices at runtime, which is a confusing way to
+        # discover a missing dependency.
+        find_file(NEXUS_MOLTENVK_ICD
+            NAMES MoltenVK_icd.json
+            PATH_SUFFIXES share/vulkan/icd.d vulkan/icd.d
+        )
+        if(NEXUS_MOLTENVK_ICD)
+            message(STATUS "  MoltenVK ICD: ${NEXUS_MOLTENVK_ICD}")
+        else()
+            message(WARNING "Vulkan headers found but no MoltenVK ICD manifest. "
+                            "The Vulkan backend will build but report no GPUs at runtime. "
+                            "Install it with: brew install molten-vk")
+        endif()
     endif()
 endif()
 

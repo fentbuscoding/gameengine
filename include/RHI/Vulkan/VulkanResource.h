@@ -40,6 +40,12 @@ public:
     VkImage GetVkImage() const { return image_; }
     VkImageView GetVkImageView() const { return imageView_; }
 
+    /// True for the images the swap chain owns, which the device wraps with the
+    /// (image, view) constructor. They must end a frame in PRESENT_SRC_KHR,
+    /// which is what makes their layout handling differ from a texture the
+    /// engine allocated itself.
+    bool IsSwapChainImage() const { return !ownsImage_; }
+
 private:
     VulkanDevice* device_;
     VkImage image_;

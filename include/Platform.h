@@ -98,6 +98,8 @@
 
 namespace Nexus {
 
+class Window;
+
 /**
  * Platform abstraction layer with DirectX integration
  */
@@ -110,8 +112,18 @@ public:
     static void SetConsoleMode(bool enabled);
     
     // Window management
-    static WindowHandle CreateGameWindow(const std::string& title, int width, int height);
-    static void DestroyGameWindow(WindowHandle window);
+    //
+    // These return Nexus::Window rather than the raw WindowHandle they used to.
+    // WindowHandle is HWND on Windows and void* elsewhere, so a handle-based API
+    // could not name an SDL window portably - and the caller needs the window's
+    // size and close state anyway, which a bare handle cannot give it. The
+    // returned window stays owned by Platform until DestroyGameWindow; nullptr
+    // means creation failed and the reason has been logged.
+    static Window* CreateGameWindow(const std::string& title, int width, int height);
+    static void DestroyGameWindow(Window* window);
+
+    /// Drains the host event queue. Returns false once every open window has
+    /// been asked to close, which is the signal for a host loop to exit.
     static bool ProcessMessages();
     
     // Timing

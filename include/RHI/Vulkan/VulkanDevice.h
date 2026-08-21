@@ -4,6 +4,8 @@
 
 #include "../RHIDevice.h"
 #include <vulkan/vulkan.h>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 namespace Nexus {
@@ -85,6 +87,7 @@ private:
     bool CreateSyncObjects();
 
     void CleanupSwapChain();
+    void DestroySyncObjects();
 
     VkInstance instance_;
     VkDebugUtilsMessengerEXT debugMessenger_;
@@ -105,9 +108,22 @@ private:
 
     VkCommandPool commandPool_;
     std::vector<VkCommandBuffer> commandBuffers_;
+
+    // Acquire-side sync is per frame-in-flight; present-side sync is per swap
+    // chain *image*. Both used to be indexed by currentFrame_, which is wrong
+    // whenever the swap chain has more images than frames in flight (three is
+    // the common case on Linux and on MoltenVK): the semaphore a present was
+    // still waiting on could be re-signalled by the next submit. Sizing the
+    // present semaphores to the image count removes the reuse entirely.
     std::vector<VkSemaphore> imageAvailableSemaphores_;
     std::vector<VkSemaphore> renderFinishedSemaphores_;
     std::vector<VkFence> inFlightFences_;
+
+    /// Fence, if any, that the last submission touching each swap chain image
+    /// was signalled with. Acquiring an image whose previous frame has not
+    /// finished must wait for that fence, not merely for this frame's.
+    /// Non-owning: every fence here is also in inFlightFences_.
+    std::vector<VkFence> imagesInFlight_;
 
     uint32_t currentFrame_;
     uint32_t currentImageIndex_;
@@ -115,6 +131,20 @@ private:
 
     bool deviceLost_;
     void* windowHandle_;
+
+    /// Kept so ResizeSwapChain can preserve the vsync/format/buffer-count the
+    /// caller originally asked for instead of silently substituting defaults.
+    SwapChainDesc swapChainDesc_;
+
+    /// The instance-level API version actually granted. Requesting 1.3 from a
+    /// 1.2 loader - which is what MoltenVK reports - fails instance creation
+    /// outright, so this is negotiated rather than assumed.
+    uint32_t apiVersion_;
+
+    /// Set when the selected physical device advertises VK_KHR_portability_subset
+    /// (i.e. it is MoltenVK). The spec *requires* that extension be enabled at
+    /// device creation when it is present; omitting it is invalid usage.
+    bool portabilitySubset_;
 };
 
 } // namespace RHI

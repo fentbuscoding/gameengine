@@ -1,10 +1,14 @@
 #include "Platform.h"
 #include "Logger.h"
+#include "Window.h"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <thread>
+#include <vector>
 
 #if defined(_WIN32)
     #include <windows.h>
@@ -24,6 +28,23 @@ namespace Nexus {
 // Windows in the first place. These implementations give that code somewhere
 // portable to go.
 
+namespace {
+
+std::vector<std::unique_ptr<Window>>& OwnedWindows() {
+    static std::vector<std::unique_ptr<Window>> windows;
+    return windows;
+}
+
+std::vector<std::unique_ptr<Window>>::iterator FindOwnedWindow(const Window* target) {
+    auto& windows = OwnedWindows();
+    return std::find_if(windows.begin(), windows.end(),
+                        [target](const std::unique_ptr<Window>& window) {
+                            return window.get() == target;
+                        });
+}
+
+} // namespace
+
 bool Platform::isInitialized_ = false;
 
 bool Platform::Initialize() {
@@ -40,6 +61,11 @@ void Platform::Shutdown() {
     if (!isInitialized_) {
         return;
     }
+
+    // Close anything CreateGameWindow handed out. Leaving windows open past
+    // shutdown leaks the SDL video subsystem, and on macOS an unclosed window
+    // keeps the process alive after main returns.
+    OwnedWindows().clear();
 
     isInitialized_ = false;
     Logger::Info("Platform layer shutdown");
@@ -181,30 +207,67 @@ std::string Platform::GetExecutablePath() {
 
 // --- Window management ------------------------------------------------------
 //
-// Window creation is genuinely platform-specific and there is no cross-platform
-// windowing backend wired up yet (SDL2 is optional and not required to build).
-// Rather than pretend, these report failure clearly on platforms without an
-// implementation so callers fail fast instead of dereferencing a null handle.
+// These forward to Nexus::Window, the SDL2-backed window layer, so the engine
+// gets one implementation on Windows, Linux and macOS instead of the Win32-only
+// code that used to live inside Engine.cpp. Platform's API is handle-based and
+// Platform owns the windows it creates so that ProcessMessages can report when
+// they have all been closed; pass Window::GetNativeHandle() to the RHI as
+// SwapChainDesc::windowHandle.
 
-WindowHandle Platform::CreateGameWindow(const std::string& title, int width, int height) {
-    (void)title;
-    (void)width;
-    (void)height;
 
-    Logger::Error("Platform::CreateGameWindow is not implemented on " + GetPlatformName() +
-                  " - build with SDL2 support or use a platform-specific window backend");
-    return nullptr;
+Window* Platform::CreateGameWindow(const std::string& title, int width, int height) {
+    Window::Desc desc;
+    desc.title = title;
+    desc.width = width;
+    desc.height = height;
+    // Vulkan is the engine's cross-platform backend, and the surface capability
+    // has to be requested when the window is created - SDL cannot add it later.
+    desc.backend = Window::Backend::Vulkan;
+
+    std::unique_ptr<Window> window = Window::Create(desc);
+    if (!window) {
+        return nullptr;
+    }
+
+    Window* raw = window.get();
+    OwnedWindows().push_back(std::move(window));
+    return raw;
 }
 
-void Platform::DestroyGameWindow(WindowHandle window) {
-    (void)window;
+void Platform::DestroyGameWindow(Window* window) {
+    if (!window) {
+        return;
+    }
+
+    auto& windows = OwnedWindows();
+    auto it = FindOwnedWindow(window);
+    if (it != windows.end()) {
+        windows.erase(it);
+    }
 }
 
 bool Platform::ProcessMessages() {
     // Drains whatever the host windowing system has queued and reports whether
     // the application should keep running. Owning the pump here is what lets
     // Engine::Run be the same code on every platform.
+    auto& windows = OwnedWindows();
+
+    if (!windows.empty()) {
+        // One PumpEvents call drains the whole process queue and updates every
+        // window, so the loop below only reads the resulting state.
+        windows.front()->PumpEvents();
+
+        for (const std::unique_ptr<Window>& window : windows) {
+            if (window->IsCloseRequested()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 #if defined(_WIN32)
+    // No Nexus::Window open, but the legacy Win32 runtime layer creates its own
+    // HWND directly, so its messages still need pumping.
     MSG msg = {};
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         if (msg.message == WM_QUIT) {
